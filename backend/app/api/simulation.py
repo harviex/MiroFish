@@ -2714,3 +2714,75 @@ def close_simulation_env():
             "error": str(e),
             "traceback": traceback.format_exc()
         }), 500
+
+
+# ============== 配置管理接口 ==============
+
+@simulation_bp.route('/config/update', methods=['POST'])
+def update_config():
+    """
+    动态更新运行时配置（LLM模型、基础URL等）
+
+    请求（JSON）：
+        {
+            "model_name": "inclusionai/ring-2.6-1t:free",  // 必填，模型ID
+            "base_url": "https://openrouter.ai/api/v1"     // 可选，API基础URL
+        }
+
+    返回：
+        {
+            "success": true,
+            "data": {
+                "model_name": "inclusionai/ring-2.6-1t:free",
+                "base_url": "https://openrouter.ai/api/v1"
+            }
+        }
+    """
+    try:
+        data = request.get_json() or {}
+
+        model_name = data.get('model_name')
+        if not model_name:
+            return jsonify({
+                "success": False,
+                "error": "model_name 不能为空"
+            }), 400
+
+        # 模型ID基础验证：必须包含至少一个斜杠或冒号（provider/model 或 model:suffix）
+        if '/' not in model_name and ':' not in model_name:
+            return jsonify({
+                "success": False,
+                "error": "模型ID格式无效，正确格式如: provider/model:suffix 或 model_name"
+            }), 400
+
+        base_url = data.get('base_url')
+
+        # 智能推断 base_url
+        if not base_url:
+            # 如果模型ID包含斜杠（OpenRouter格式），默认使用OpenRouter
+            if '/' in model_name:
+                base_url = 'https://openrouter.ai/api/v1'
+            # 如果模型ID看起来是本地模型（纯名称:后缀），默认使用Ollama
+            elif ':' in model_name:
+                base_url = 'http://localhost:11434/v1'
+
+        from ..config import Config
+        Config.update_llm_config(model_name, base_url)
+
+        logger.info(f"配置已更新: model_name={model_name}, base_url={base_url}")
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "model_name": model_name,
+                "base_url": base_url
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"更新配置失败: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500

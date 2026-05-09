@@ -64,6 +64,54 @@ class Config:
     REPORT_AGENT_TEMPERATURE = float(os.environ.get('REPORT_AGENT_TEMPERATURE', '0.5'))
     
     @classmethod
+    def update_llm_config(cls, model_name: str, base_url: str = None):
+        """动态更新LLM配置（运行时生效）"""
+        cls.LLM_MODEL_NAME = model_name
+        if base_url:
+            cls.LLM_BASE_URL = base_url
+
+        # 持久化到 .env 文件
+        cls._persist_env_config(model_name, base_url)
+
+    @classmethod
+    def _persist_env_config(cls, model_name: str, base_url: str = None):
+        """将配置更新写入 .env 文件"""
+        import re
+        project_root_env = os.path.join(os.path.dirname(__file__), '../../.env')
+
+        if not os.path.exists(project_root_env):
+            return
+
+        with open(project_root_env, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # 更新 LLM_MODEL_NAME
+        if re.search(r'^LLM_MODEL_NAME=.*', content, re.MULTILINE):
+            content = re.sub(
+                r'^LLM_MODEL_NAME=.*',
+                f'LLM_MODEL_NAME={model_name}',
+                content,
+                flags=re.MULTILINE
+            )
+        else:
+            content += f'\nLLM_MODEL_NAME={model_name}\n'
+
+        # 更新 LLM_BASE_URL
+        if base_url:
+            if re.search(r'^LLM_BASE_URL=.*', content, re.MULTILINE):
+                content = re.sub(
+                    r'^LLM_BASE_URL=.*',
+                    f'LLM_BASE_URL={base_url}',
+                    content,
+                    flags=re.MULTILINE
+                )
+            else:
+                content += f'\nLLM_BASE_URL={base_url}\n'
+
+        with open(project_root_env, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+    @classmethod
     def validate(cls):
         """验证必要配置"""
         errors = []

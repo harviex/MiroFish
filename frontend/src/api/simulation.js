@@ -169,6 +169,14 @@ export const getEnvStatus = (data) => {
 }
 
 /**
+ * 更新运行时配置（LLM模型、API地址等）
+ * @param {Object} data - { model_name, base_url? }
+ */
+export const updateConfig = (data) => {
+  return service.post('/api/simulation/config/update', data)
+}
+
+/**
  * 批量采访 Agent
  * @param {Object} data - { simulation_id, interviews: [{ agent_id, prompt }] }
  */

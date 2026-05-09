@@ -69,7 +69,17 @@
     "promptPlaceholder": "// Describe your simulation or prediction requirement in natural language",
     "engineBadge": "Engine: MiroFish-V1.0",
     "startEngine": "Start Engine",
-    "initializing": "Initializing..."
+    "initializing": "Initializing...",
+    "modelSwitch": "Model Switch",
+    "modelId": "Model ID",
+    "modelIdPlaceholder": "e.g. inclusionai/ring-2.6-1t:free",
+    "baseUrl": "API Base URL",
+    "baseUrlPlaceholder": "e.g. https://openrouter.ai/api/v1",
+    "switchModel": "Switch Model",
+    "switchingModel": "Switching...",
+    "switchSuccess": "Model switched to: {model}",
+    "switchFailed": "Switch failed: {error}",
+    "invalidModelId": "Invalid model ID format, e.g. provider/model:suffix"
   },
   "main": {
     "layoutGraph": "Graph",

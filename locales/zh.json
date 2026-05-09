@@ -69,7 +69,17 @@
     "promptPlaceholder": "// 用自然语言输入模拟或预测需求（例.武大若发布撤销肖某处分的公告，会引发什么舆情走向）",
     "engineBadge": "引擎: MiroFish-V1.0",
     "startEngine": "启动引擎",
-    "initializing": "初始化中..."
+    "initializing": "初始化中...",
+    "modelSwitch": "模型切换",
+    "modelId": "模型ID",
+    "modelIdPlaceholder": "例如: inclusionai/ring-2.6-1t:free",
+    "baseUrl": "API 地址",
+    "baseUrlPlaceholder": "例如: https://openrouter.ai/api/v1",
+    "switchModel": "切换模型",
+    "switchingModel": "切换中...",
+    "switchSuccess": "模型已切换为: {model}",
+    "switchFailed": "切换失败: {error}",
+    "invalidModelId": "模型ID格式无效，正确格式如: provider/model:suffix"
   },
   "main": {
     "layoutGraph": "图谱",

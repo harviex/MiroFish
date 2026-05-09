@@ -185,7 +185,49 @@
                   rows="6"
                   :disabled="loading"
                 ></textarea>
-                <div class="model-badge">{{ $t('home.engineBadge') }}</div>
+                <div class="model-badge">{{ activeModelDisplay }}</div>
+                <button
+                  class="model-switch-btn"
+                  @click="showModelSwitch = !showModelSwitch"
+                  :disabled="loading"
+                >{{ $t('home.modelSwitch') }}</button>
+              </div>
+
+              <!-- 模型切换面板 -->
+              <div v-if="showModelSwitch" class="model-switch-panel">
+                <div class="model-switch-panel-title">
+                  <span>{{ $t('home.modelSwitch') }}</span>
+                  <button class="close-btn" @click="showModelSwitch = false">✕</button>
+                </div>
+                <div class="model-switch-form">
+                  <label>{{ $t('home.modelId') }}</label>
+                  <input
+                    v-model="modelId"
+                    :placeholder="$t('home.modelIdPlaceholder')"
+                    :disabled="switching"
+                  />
+                  <label>{{ $t('home.baseUrl') }}</label>
+                  <input
+                    v-model="baseUrl"
+                    :placeholder="$t('home.baseUrlPlaceholder')"
+                    :disabled="switching"
+                  />
+                  <button
+                    class="switch-submit-btn"
+                    @click="handleSwitchModel"
+                    :disabled="switching"
+                  >
+                    <span v-if="!switching">{{ $t('home.switchModel') }}</span>
+                    <span v-else>{{ $t('home.switchingModel') }}</span>
+                  </button>
+                  <div
+                    v-if="switchMsg"
+                    class="model-switch-msg"
+                    :class="switchMsgType"
+                  >
+                    {{ switchMsg }}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -214,6 +256,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { updateConfig } from '../api/simulation'
 import HistoryDatabase from '../components/HistoryDatabase.vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 
@@ -231,6 +274,57 @@ const files = ref([])
 const loading = ref(false)
 const error = ref('')
 const isDragOver = ref(false)
+
+// 模型切换状态
+const showModelSwitch = ref(false)
+const modelId = ref('')
+const baseUrl = ref('')
+const switching = ref(false)
+const switchMsg = ref('')
+const switchMsgType = ref('')
+
+// 计算属性:当前模型显示
+const activeModelDisplay = computed(() => {
+  return modelId.value || 'MiroFish-V1.0'
+})
+
+// 模型验证
+const validateModelId = (id) => {
+  return id && id.includes('/')
+}
+
+// 切换模型
+const handleSwitchModel = async () => {
+  if (!validateModelId(modelId.value)) {
+    switchMsg.value = $t('home.invalidModelId')
+    switchMsgType.value = 'error'
+    return
+  }
+
+  switching.value = true
+  switchMsg.value = ''
+
+  try {
+    const res = await updateConfig({
+      model_name: modelId.value,
+      base_url: baseUrl.value || undefined
+    })
+
+    if (res.data?.success) {
+      switchMsg.value = $t('home.switchSuccess', { model: modelId.value })
+      switchMsgType.value = 'success'
+      showModelSwitch.value = false
+    } else {
+      switchMsg.value = $t('home.switchFailed', { error: res.data?.error || 'Unknown' })
+      switchMsgType.value = 'error'
+    }
+  } catch (e) {
+    switchMsg.value = $t('home.switchFailed', { error: e.message || 'Unknown' })
+    switchMsgType.value = 'error'
+  } finally {
+    switching.value = false
+  }
+}
 
 // 文件输入引用
 const fileInput = ref(null)
@@ -821,6 +915,151 @@ const startSimulation = () => {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   color: #AAA;
+  cursor: default;
+}
+
+.model-switch-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 160px;
+  background: none;
+  border: 1px solid #CCC;
+  color: #999;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.model-switch-btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.model-switch-panel {
+  position: absolute;
+  bottom: 40px;
+  right: 0;
+  width: 320px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 16px;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.model-switch-panel::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  right: 20px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #333;
+}
+
+.model-switch-panel-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #CCC;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.model-switch-panel-title .close-btn {
+  cursor: pointer;
+  color: #888;
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  padding: 0 4px;
+}
+
+.model-switch-panel-title .close-btn:hover {
+  color: #FFF;
+}
+
+.model-switch-form label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #999;
+  margin-bottom: 4px;
+  margin-top: 10px;
+}
+
+.model-switch-form label:first-of-type {
+  margin-top: 0;
+}
+
+.model-switch-form input {
+  width: 100%;
+  padding: 8px 10px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #EEE;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.model-switch-form input:focus {
+  border-color: var(--orange);
+}
+
+.model-switch-form .switch-submit-btn {
+  margin-top: 14px;
+  width: 100%;
+  padding: 8px;
+  background: #333;
+  border: 1px solid #555;
+  color: #CCC;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.model-switch-form .switch-submit-btn:hover:not(:disabled) {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: #FFF;
+}
+
+.model-switch-form .switch-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.model-switch-msg {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 6px 10px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.model-switch-msg.success {
+  background: rgba(0,200,83,0.15);
+  color: #69F0AE;
+  border: 1px solid rgba(0,200,83,0.3);
+}
+
+.model-switch-msg.error {
+  background: rgba(255,82,82,0.15);
+  color: #FF8A80;
+  border: 1px solid rgba(255,82,82,0.3);
 }
 
 .start-engine-btn {
