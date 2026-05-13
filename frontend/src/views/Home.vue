@@ -14,34 +14,86 @@
     <div class="main-content">
       <!-- 下半部分：双栏布局 -->
       <section class="dashboard-section">
-        <!-- 左栏：状态与步骤 -->
+        <!-- 左栏：专家会堂 -->
         <div class="left-panel">
           <div class="panel-header">
-            <span class="status-dot">■</span> {{ $t('home.systemStatus') }}
+            <span class="status-dot">◇</span> 专家会堂
           </div>
           
-          <h2 class="section-title">{{ $t('home.systemReady') }}</h2>
-          <p class="section-desc">
-            {{ $t('home.systemReadyDesc') }}
-          </p>
-          
-          <!-- 数据指标卡片 -->
-          <div class="metrics-row">
-            <div class="metric-card">
-              <div class="metric-value">{{ $t('home.metricLowCost') }}</div>
-              <div class="metric-label">{{ $t('home.metricLowCostDesc') }}</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value">{{ $t('home.metricHighAvail') }}</div>
-              <div class="metric-label">{{ $t('home.metricHighAvailDesc') }}</div>
-            </div>
+          <!-- 空状态 -->
+          <div v-if="!intentAnalyzed && !expertsGenerating && generatedExperts.length === 0" class="expert-hall-empty">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">研讨组局向导</div>
+            <div class="empty-desc">在右侧输入模拟提示词后，点击"生成专家阵容"按钮，AI 将自动为您组建研讨团队。</div>
           </div>
 
-          <!-- 项目模拟步骤介绍 (新增区域) -->
-          <div class="steps-container">
-            <div class="steps-header">
-               <span class="diamond-icon">◇</span> {{ $t('home.workflowSequence') }}
+          <!-- Step 1: 意图分析结果 -->
+          <div v-if="intentAnalyzed && !domainSelected" class="panel-card intent-card">
+            <div class="card-title">🎯 研讨分析</div>
+            <div class="int-summary">{{ intentAnalyzed.summary }}</div>
+            <div class="int-label">建议研讨领域：</div>
+            <div class="int-domains">
+              <label v-for="(d, i) in intentAnalyzed.domains" :key="i" class="domain-check">
+                <input type="checkbox" v-model="selectedDomainIndices" :value="i" />
+                <span class="domain-label">{{ d.label }}</span>
+                <span class="domain-reason">{{ d.reason }}</span>
+              </label>
             </div>
+            <button class="action-btn primary" @click="handleGenerateExperts">
+              ✓ 确认并生成专家阵容
+            </button>
+          </div>
+
+          <!-- Loading: 意图分析中 -->
+          <div v-if="intentAnalyzing" class="panel-card loading-card">
+            <div class="loading-spinner-spin"></div>
+            <div class="loading-text">正在分析研讨意图...</div>
+          </div>
+
+          <!-- Loading: 生成专家中 -->
+          <div v-if="expertsGenerating" class="panel-card loading-card">
+            <div class="loading-spinner-spin"></div>
+            <div class="loading-text">正在组建专家团队...</div>
+          </div>
+
+          <!-- Step 2: 专家阵容展示 -->
+          <div v-if="generatedExperts.length > 0" class="panel-card expert-card">
+            <div class="card-title">👥 专家阵容 ({{ generatedExperts.length }}人)</div>
+            
+            <div class="expert-scroll-area">
+              <div 
+                v-for="(expert, i) in generatedExperts" 
+                :key="i" class="expert-chip"
+              >
+                <div class="expert-chip-header">
+                  <span class="expert-name">{{ expert.name }}</span>
+                  <span class="expert-identity">{{ expert.identity }}</span>
+                </div>
+                <div class="expert-chip-body">
+                  <span class="expert-domain-tag">{{ expert.domain }}</span>
+                  <div class="expert-stance">立场: {{ expert.stance }}</div>
+                  <div class="expert-style">🗣 {{ expert.speaking_style }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 增量调整 -->
+            <div class="expert-adjust">
+              <textarea
+                v-model="additionalExpertRequest"
+                class="expert-input"
+                placeholder="是否需要增加其他角色？（例：添加一位持反对意见的学者）"
+                rows="2"
+              ></textarea>
+              <div class="expert-actions-row">
+                <button class="action-btn small" @click="handleAddExperts">+ 追加角色</button>
+                <button class="action-btn small ghost" @click="handleRegenerateExperts">🎲 重新生成</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 工作流步骤 (压缩显示) -->
+          <div class="workflow-steps-compact">
             <div class="workflow-list">
               <div class="workflow-item">
                 <span class="step-num">01</span>
@@ -147,6 +199,17 @@
                 <div class="model-badge">⚙ {{ activeModelDisplay }}</div>
               </div>
 
+              <!-- 生成专家阵容按钮 -->
+              <button 
+                class="generate-experts-btn"
+                @click="handleAnalyzeIntent"
+                :disabled="!canAnalyzeExperts || intentAnalyzing || expertsGenerating"
+              >
+                <span v-if="!intentAnalyzing && !expertsGenerating">🎲 生成专家阵容</span>
+                <span v-else-if="intentAnalyzing">🎯 分析研讨意图中...</span>
+                <span v-else>👥 组建专家团队中...</span>
+              </button>
+
               <!-- 常驻模型切换栏 -->
               <div class="model-inline-form">
                 <label class="model-inline-label">{{ $t('home.modelId') }}</label>
@@ -208,7 +271,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { updateConfig } from '../api/simulation'
+import { updateConfig, analyzeIntent, generateExperts } from '../api/simulation'
 import HistoryDatabase from '../components/HistoryDatabase.vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 
@@ -233,6 +296,14 @@ const baseUrl = ref('')
 const switching = ref(false)
 const switchMsg = ref('')
 const switchMsgType = ref('')
+
+// 专家会堂状态
+const intentAnalyzing = ref(false)
+const expertsGenerating = ref(false)
+const intentAnalyzed = ref(null)  // { summary, domains }
+const selectedDomainIndices = ref([])
+const generatedExperts = ref([])
+const additionalExpertRequest = ref('')
 
 // 计算属性:当前模型显示
 const activeModelDisplay = computed(() => {
@@ -284,6 +355,106 @@ const canSubmit = computed(() => {
   return formData.value.simulationRequirement.trim() !== '' && files.value.length > 0
 })
 
+// 专家会堂相关方法
+const canAnalyzeExperts = computed(() => {
+  return formData.value.simulationRequirement.trim() !== ''
+})
+
+// Step 1: 分析意图
+const handleAnalyzeIntent = async () => {
+  if (!canAnalyzeExperts.value || intentAnalyzing.value) return
+  
+  intentAnalyzing.value = true
+  selectedDomainIndices.value = []
+  
+  try {
+    const res = await analyzeIntent({ sim_requirement: formData.value.simulationRequirement })
+    if (res.data?.success) {
+      intentAnalyzed.value = res.data.data
+      // 默认全选所有领域
+      selectedDomainIndices.value = intentAnalyzed.value.domains.map((_, i) => i)
+    } else {
+      alert(res.data?.error || '分析失败')
+    }
+  } catch (error) {
+    console.error('意图分析失败:', error)
+    alert('意图分析失败: ' + (error.message || '网络错误'))
+  } finally {
+    intentAnalyzing.value = false
+  }
+}
+
+// Step 2: 生成专家阵容
+const handleGenerateExperts = async () => {
+  if (!intentAnalyzed.value || selectedDomainIndices.value.length === 0) return
+  
+  expertsGenerating.value = true
+  generatedExperts.value = []
+  additionalExpertRequest.value = ''
+  
+  try {
+    const selectedDomains = selectedDomainIndices.value.map(i => intentAnalyzed.value.domains[i])
+    const res = await generateExperts({
+      sim_requirement: formData.value.simulationRequirement,
+      selected_domains: selectedDomains,
+      count: 10
+    })
+    if (res.data?.success) {
+      generatedExperts.value = res.data.data.experts || []
+    } else {
+      alert(res.data?.error || '生成失败')
+    }
+  } catch (error) {
+    console.error('生成专家阵容失败:', error)
+    alert('生成专家阵容失败: ' + (error.message || '网络错误'))
+  } finally {
+    expertsGenerating.value = false
+  }
+}
+
+// 追加角色
+const handleAddExperts = async () => {
+  if (!additionalExpertRequest.value.trim()) return
+  
+  expertsGenerating.value = true
+  
+  try {
+    const selectedDomains = selectedDomainIndices.value.map(i => intentAnalyzed.value.domains[i])
+    const res = await generateExperts({
+      sim_requirement: formData.value.simulationRequirement,
+      selected_domains: selectedDomains,
+      existing_experts: generatedExperts.value,
+      additional_request: additionalExpertRequest.value,
+      count: generatedExperts.value.length + 3
+    })
+    if (res.data?.success) {
+      // 合并且去重
+      const newExperts = (res.data.data.experts || []).filter(e => 
+        !generatedExperts.value.some(orig => orig.name === e.name)
+      )
+      generatedExperts.value = generatedExperts.value.concat(newExperts)
+      additionalExpertRequest.value = ''
+    } else {
+      alert(res.data?.error || '追加失败')
+    }
+  } catch (error) {
+    console.error('追加角色失败:', error)
+    alert('追加角色失败: ' + (error.message || '网络错误'))
+  } finally {
+    expertsGenerating.value = false
+  }
+}
+
+// 重新生成
+const handleRegenerateExperts = async () => {
+  // 重置分析结果，重新开始
+  intentAnalyzed.value = null
+  generatedExperts.value = []
+  selectedDomainIndices.value = []
+  // 自动重新分析
+  handleAnalyzeIntent()
+}
+
 // 触发文件选择
 const triggerFileInput = () => {
   if (!loading.value) {
@@ -334,9 +505,9 @@ const removeFile = (index) => {
 const startSimulation = () => {
   if (!canSubmit.value || loading.value) return
   
-  // 存储待上传的数据
+  // 存储待上传的数据（包含专家阵容）
   import('../store/pendingUpload.js').then(({ setPendingUpload }) => {
-    setPendingUpload(files.value, formData.value.simulationRequirement)
+    setPendingUpload(files.value, formData.value.simulationRequirement, generatedExperts.value)
     
     // 立即跳转到Process页面（使用特殊标识表示新建项目）
     router.push({
@@ -492,6 +663,309 @@ const startSimulation = () => {
 .metric-label {
   font-size: 0.85rem;
   color: #999;
+}
+
+/* 项目模拟步骤介绍 */
+.steps-container {
+  border: 1px solid var(--border);
+  padding: 30px;
+  position: relative;
+}
+
+.steps-header {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #999;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diamond-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* 专家会堂 UI */
+.expert-hall-empty {
+  border: 1px solid var(--border);
+  padding: 24px;
+  text-align: center;
+}
+.expert-hall-empty .empty-icon { font-size: 2rem; margin-bottom: 12px; }
+.expert-hall-empty .empty-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+.expert-hall-empty .empty-desc { font-size: 0.85rem; color: #999; line-height: 1.5; }
+
+.panel-card {
+  border: 1px solid var(--border);
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+  letter-spacing: 0.5px;
+}
+
+/* 空状态 */
+.expert-hall-empty .empty-icon { font-size: 2rem; margin-bottom: 12px; }
+.expert-hall-empty .empty-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+.expert-hall-empty .empty-desc { font-size: 0.85rem; color: #999; line-height: 1.5; }
+
+/* 意图分析卡片 */
+.intent-card .int-summary {
+  font-size: 0.9rem;
+  color: var(--black);
+  font-weight: 500;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.intent-card .int-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #999;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.int-domains {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.domain-check {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  padding: 8px 10px;
+  background: #f9f9f9;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.domain-check:hover { border-color: var(--border); background: #fff; }
+.domain-check input[type="checkbox"] { position: absolute; opacity: 0; cursor: pointer; }
+.domain-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.domain-label::before {
+  content: '□';
+  font-size: 1rem;
+  color: #999;
+}
+.domain-check input:checked + .domain-label::before {
+  content: '☑';
+  color: var(--orange);
+}
+.domain-reason {
+  font-size: 0.75rem;
+  color: #999;
+  padding-left: 20px;
+}
+
+/* 卡片操作按钮 */
+.action-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 6px;
+}
+.action-btn.primary {
+  background: var(--black);
+  color: #fff;
+  border-color: var(--black);
+}
+.action-btn.primary:hover { opacity: 0.85; }
+.action-btn.small {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 0.7rem;
+}
+.action-btn.small.ghost {
+  background: transparent;
+}
+.action-btn.small:hover { background: #f0f0f0; }
+
+/* Loading 卡片 */
+.loading-card {
+  border: 1px solid var(--border);
+  padding: 32px;
+  text-align: center;
+}
+.loading-card .loading-text {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: #999;
+}
+.loading-spinner-spin {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #eee;
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 专家阵容卡片 */
+.expert-card {
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+.expert-card .card-title { padding: 0 4px 12px; }
+
+.expert-scroll-area {
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+  margin-bottom: 12px;
+}
+.expert-scroll-area::-webkit-scrollbar { width: 4px; }
+.expert-scroll-area::-webkit-scrollbar-track { background: #f3f3f3; }
+.expert-scroll-area::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+.expert-chip {
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 10px 14px;
+  transition: all 0.15s;
+  background: #fafafa;
+}
+.expert-chip:hover { border-color: var(--orange); background: #fff; }
+
+.expert-chip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.expert-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--black);
+}
+.expert-identity {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  background: #f0ebe4;
+  color: #8b7355;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.expert-chip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.expert-domain-tag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  background: #e8edf2;
+  color: #5a7ea6;
+  padding: 1px 6px;
+  border-radius: 2px;
+  display: inline-block;
+  width: fit-content;
+}
+.expert-stance {
+  font-size: 0.78rem;
+  color: #555;
+  line-height: 1.4;
+}
+.expert-style {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #999;
+}
+
+/* 增量调整区域 */
+.expert-adjust {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+.expert-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.expert-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* 生成专家阵容按钮 */
+.generate-experts-btn {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed var(--orange);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--orange);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.generate-experts-btn:hover:not(:disabled) {
+  background: rgba(255, 160, 0, 0.06);
+  border-style: solid;
+}
+.generate-experts-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 工作流步骤 (压缩显示) */
+.workflow-steps-compact {
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
+.workflow-steps-compact .workflow-item {
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.workflow-steps-compact .step-num {
+  font-size: 0.75rem;
+  opacity: 0.2;
+}
+.workflow-steps-compact .step-title {
+  font-size: 0.85rem;
+}
+.workflow-steps-compact .step-desc {
+  font-size: 0.75rem;
 }
 
 /* 项目模拟步骤介绍 */

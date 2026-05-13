@@ -201,3 +201,19 @@ export const deleteSimulationProject = (projectId) => {
   return service.delete(`/api/graph/project/${projectId}`)
 }
 
+/**
+ * Step 1: 意图分析 - 提炼研讨领域
+ * @param {Object} data - { sim_requirement, model_name?, base_url? }
+ */
+export const analyzeIntent = (data) => {
+  return service.post('/api/expert/analyze-intent', data)
+}
+
+/**
+ * Step 2: 生成专家阵容
+ * @param {Object} data - { sim_requirement, selected_domains, existing_experts?, additional_request?, count? }
+ */
+export const generateExperts = (data) => {
+  return service.post('/api/expert/generate-experts', data)
+}
+

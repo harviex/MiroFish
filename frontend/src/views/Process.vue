@@ -564,6 +564,24 @@ const initProject = async () => {
   }
 }
 
+// 将专家数据格式化为 Markdown 文档
+const formatExpertsAsMarkdown = (experts) => {
+  let md = '# 核心专家阵容\n\n'
+  md += '> 以下专家由 AI 根据研讨需求自动组建，各角色均具备独特立场、背景和发言风格。\n\n'
+  
+  experts.forEach((e, i) => {
+    md += `## ${i + 1}. ${e.name}（${e.identity}）\n\n`
+    md += `- **所属领域**：${e.domain}\n`
+    md += `- **角色背景**：${e.background}\n`
+    md += `- **思维倾向**：${e.mindset}\n`
+    md += `- **核心关注**：${(e.focus || []).join('、')}\n`
+    md += `- **基本立场**：${e.stance}\n`
+    md += `- **说话风格**：${e.speaking_style}\n\n`
+  })
+  
+  return md
+}
+
 // 处理新建项目 - 调用 ontology/generate API
 const handleNewProject = async () => {
   const pending = getPendingUpload()
@@ -584,7 +602,20 @@ const handleNewProject = async () => {
     pending.files.forEach(file => {
       formDataObj.append('files', file)
     })
-    formDataObj.append('simulation_requirement', pending.simulationRequirement)
+
+    // 如果有专家阵容，生成专家 MD 文档并注入
+    let simRequirement = pending.simulationRequirement
+    if (pending.experts && pending.experts.length > 0) {
+      const expertsMd = formatExpertsAsMarkdown(pending.experts)
+      const expertBlob = new Blob([expertsMd], { type: 'text/markdown' })
+      const expertFile = new File([expertBlob], '_experts.md', { type: 'text/markdown' })
+      formDataObj.append('files', expertFile)
+      
+      // 在模拟提示词中说明专家来源
+      simRequirement = pending.simulationRequirement + '\n\n【注：系统已为您准备了以下专家阵容，请在模拟中使用这些角色进行研讨。】'
+    }
+
+    formDataObj.append('simulation_requirement', simRequirement)
     
     // 调用本体生成 API
     const response = await generateOntology(formDataObj)
