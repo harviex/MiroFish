@@ -12,47 +12,6 @@
     </nav>
 
     <div class="main-content">
-      <!-- 上半部分：Hero 区域 -->
-      <section class="hero-section">
-        <div class="hero-left">
-          <div class="tag-row">
-            <span class="orange-tag">{{ $t('home.tagline') }}</span>
-            <span class="version-text">{{ $t('home.version') }}</span>
-          </div>
-          
-          <h1 class="main-title">
-            {{ $t('home.heroTitle1') }}<br>
-            <span class="gradient-text">{{ $t('home.heroTitle2') }}</span>
-          </h1>
-          
-          <div class="hero-desc">
-            <p>
-              <i18n-t keypath="home.heroDesc" tag="span">
-                <template #brand><span class="highlight-bold">{{ $t('home.heroDescBrand') }}</span></template>
-                <template #agentScale><span class="highlight-orange">{{ $t('home.heroDescAgentScale') }}</span></template>
-                <template #optimalSolution><span class="highlight-code">{{ $t('home.heroDescOptimalSolution') }}</span></template>
-              </i18n-t>
-            </p>
-            <p class="slogan-text">
-              {{ $t('home.slogan') }}<span class="blinking-cursor">_</span>
-            </p>
-          </div>
-           
-          <div class="decoration-square"></div>
-        </div>
-        
-        <div class="hero-right">
-          <!-- Logo 区域 -->
-          <div class="logo-container">
-            <img src="../assets/logo/MiroFish_logo_left.jpeg" alt="MiroFish Logo" class="hero-logo" />
-          </div>
-          
-          <button class="scroll-down-btn" @click="scrollToBottom">
-            ↓
-          </button>
-        </div>
-      </section>
-
       <!-- 下半部分：双栏布局 -->
       <section class="dashboard-section">
         <!-- 左栏：状态与步骤 -->
@@ -185,48 +144,41 @@
                   rows="6"
                   :disabled="loading"
                 ></textarea>
-                <div class="model-badge">{{ activeModelDisplay }}</div>
-                <button
-                  class="model-switch-btn"
-                  @click="showModelSwitch = !showModelSwitch"
-                  :disabled="loading"
-                >{{ $t('home.modelSwitch') }}</button>
+                <div class="model-badge">⚙ {{ activeModelDisplay }}</div>
               </div>
 
-              <!-- 模型切换面板 -->
-              <div v-if="showModelSwitch" class="model-switch-panel">
-                <div class="model-switch-panel-title">
-                  <span>{{ $t('home.modelSwitch') }}</span>
-                  <button class="close-btn" @click="showModelSwitch = false">✕</button>
-                </div>
-                <div class="model-switch-form">
-                  <label>{{ $t('home.modelId') }}</label>
-                  <input
-                    v-model="modelId"
-                    :placeholder="$t('home.modelIdPlaceholder')"
-                    :disabled="switching"
-                  />
-                  <label>{{ $t('home.baseUrl') }}</label>
-                  <input
-                    v-model="baseUrl"
-                    :placeholder="$t('home.baseUrlPlaceholder')"
-                    :disabled="switching"
-                  />
-                  <button
-                    class="switch-submit-btn"
-                    @click="handleSwitchModel"
-                    :disabled="switching"
-                  >
-                    <span v-if="!switching">{{ $t('home.switchModel') }}</span>
-                    <span v-else>{{ $t('home.switchingModel') }}</span>
-                  </button>
-                  <div
-                    v-if="switchMsg"
-                    class="model-switch-msg"
-                    :class="switchMsgType"
-                  >
-                    {{ switchMsg }}
-                  </div>
+              <!-- 常驻模型切换栏 -->
+              <div class="model-inline-form">
+                <label class="model-inline-label">{{ $t('home.modelId') }}</label>
+                <input
+                  v-model="modelId"
+                  class="model-inline-input"
+                  :placeholder="$t('home.modelIdPlaceholder')"
+                  :disabled="switching"
+                  @keyup.enter="handleSwitchModel"
+                />
+                <label class="model-inline-label">{{ $t('home.baseUrl') }}</label>
+                <input
+                  v-model="baseUrl"
+                  class="model-inline-input"
+                  :placeholder="$t('home.baseUrlPlaceholder')"
+                  :disabled="switching"
+                  @keyup.enter="handleSwitchModel"
+                />
+                <button
+                  class="model-switch-btn"
+                  @click="handleSwitchModel"
+                  :disabled="switching"
+                >
+                  <span v-if="!switching">{{ $t('home.modelSwitch') }}</span>
+                  <span v-else>{{ $t('home.switchingModel') }}</span>
+                </button>
+                <div
+                  v-if="switchMsg"
+                  class="model-switch-msg"
+                  :class="switchMsgType"
+                >
+                  {{ switchMsg }}
                 </div>
               </div>
             </div>
@@ -276,7 +228,6 @@ const error = ref('')
 const isDragOver = ref(false)
 
 // 模型切换状态
-const showModelSwitch = ref(false)
 const modelId = ref('')
 const baseUrl = ref('')
 const switching = ref(false)
@@ -313,7 +264,6 @@ const handleSwitchModel = async () => {
     if (res.data?.success) {
       switchMsg.value = $t('home.switchSuccess', { model: modelId.value })
       switchMsgType.value = 'success'
-      showModelSwitch.value = false
     } else {
       switchMsg.value = $t('home.switchFailed', { error: res.data?.error || 'Unknown' })
       switchMsgType.value = 'error'
@@ -378,14 +328,6 @@ const addFiles = (newFiles) => {
 // 移除文件
 const removeFile = (index) => {
   files.value.splice(index, 1)
-}
-
-// 滚动到底部
-const scrollToBottom = () => {
-  window.scrollTo({
-    top: document.body.scrollHeight,
-    behavior: 'smooth'
-  })
 }
 
 // 开始模拟 - 立即跳转，API调用在Process页面进行
@@ -479,159 +421,6 @@ const startSimulation = () => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 60px 40px;
-}
-
-/* Hero 区域 */
-.hero-section {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 80px;
-  position: relative;
-}
-
-.hero-left {
-  flex: 1;
-  padding-right: 60px;
-}
-
-.tag-row {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 25px;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-
-.orange-tag {
-  background: var(--orange);
-  color: var(--white);
-  padding: 4px 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  font-size: 0.75rem;
-}
-
-.version-text {
-  color: #999;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-}
-
-.main-title {
-  font-size: 4.5rem;
-  line-height: 1.2;
-  font-weight: 500;
-  margin: 0 0 40px 0;
-  letter-spacing: -2px;
-  color: var(--black);
-}
-
-.gradient-text {
-  background: linear-gradient(90deg, #000000 0%, #444444 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
-}
-
-.hero-desc {
-  font-size: 1.05rem;
-  line-height: 1.8;
-  color: var(--gray-text);
-  max-width: 640px;
-  margin-bottom: 50px;
-  font-weight: 400;
-  text-align: justify;
-}
-
-.hero-desc p {
-  margin-bottom: 1.5rem;
-}
-
-.highlight-bold {
-  color: var(--black);
-  font-weight: 700;
-}
-
-.highlight-orange {
-  color: var(--orange);
-  font-weight: 700;
-  font-family: var(--font-mono);
-}
-
-.highlight-code {
-  background: rgba(0, 0, 0, 0.05);
-  padding: 2px 6px;
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  color: var(--black);
-  font-weight: 600;
-}
-
-.slogan-text {
-  font-size: 1.2rem;
-  font-weight: 520;
-  color: var(--black);
-  letter-spacing: 1px;
-  border-left: 3px solid var(--orange);
-  padding-left: 15px;
-  margin-top: 20px;
-}
-
-.blinking-cursor {
-  color: var(--orange);
-  animation: blink 1s step-end infinite;
-  font-weight: 700;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-.decoration-square {
-  width: 16px;
-  height: 16px;
-  background: var(--orange);
-}
-
-.hero-right {
-  flex: 0.8;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.logo-container {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  padding-right: 40px;
-}
-
-.hero-logo {
-  max-width: 500px; /* 调整logo大小 */
-  width: 100%;
-}
-
-.scroll-down-btn {
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--border);
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--orange);
-  font-size: 1.2rem;
-  transition: all 0.2s;
-}
-
-.scroll-down-btn:hover {
-  border-color: var(--orange);
 }
 
 /* Dashboard 双栏布局 */
@@ -918,125 +707,63 @@ const startSimulation = () => {
   cursor: default;
 }
 
-.model-switch-btn {
-  position: absolute;
-  bottom: 8px;
-  right: 160px;
-  background: none;
-  border: 1px solid #CCC;
-  color: #999;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  padding: 2px 8px;
-  cursor: pointer;
-  border-radius: 3px;
-  transition: all 0.2s;
-}
-
-.model-switch-btn:hover {
-  border-color: var(--orange);
-  color: var(--orange);
-}
-
-.model-switch-panel {
-  position: absolute;
-  bottom: 40px;
-  right: 0;
-  width: 320px;
+/* 常驻模型切换栏 */
+.model-inline-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 6px;
-  padding: 16px;
-  z-index: 100;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
-.model-switch-panel::before {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  right: 20px;
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid #333;
-}
-
-.model-switch-panel-title {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: #CCC;
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.model-switch-panel-title .close-btn {
-  cursor: pointer;
-  color: #888;
-  font-size: 0.9rem;
-  background: none;
-  border: none;
-  padding: 0 4px;
-}
-
-.model-switch-panel-title .close-btn:hover {
-  color: #FFF;
-}
-
-.model-switch-form label {
-  display: block;
+.model-inline-label {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   color: #999;
-  margin-bottom: 4px;
-  margin-top: 10px;
+  white-space: nowrap;
 }
 
-.model-switch-form label:first-of-type {
-  margin-top: 0;
-}
-
-.model-switch-form input {
-  width: 100%;
-  padding: 8px 10px;
+.model-inline-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 5px 8px;
   background: #2a2a2a;
   border: 1px solid #444;
-  border-radius: 4px;
+  border-radius: 3px;
   color: #EEE;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   outline: none;
-  box-sizing: border-box;
 }
 
-.model-switch-form input:focus {
+.model-inline-input:focus {
   border-color: var(--orange);
 }
 
-.model-switch-form .switch-submit-btn {
-  margin-top: 14px;
-  width: 100%;
-  padding: 8px;
+.model-switch-btn {
+  padding: 5px 14px;
   background: #333;
   border: 1px solid #555;
   color: #CCC;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 3px;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.model-switch-form .switch-submit-btn:hover:not(:disabled) {
+.model-switch-btn:hover:not(:disabled) {
   background: var(--orange);
   border-color: var(--orange);
   color: #FFF;
 }
 
-.model-switch-form .switch-submit-btn:disabled {
+.model-switch-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1118,46 +845,11 @@ const startSimulation = () => {
   .dashboard-section {
     flex-direction: column;
   }
-  
-  .hero-section {
-    flex-direction: column;
-  }
-  
-  .hero-left {
-    padding-right: 0;
-    margin-bottom: 40px;
-  }
-  
-  .hero-logo {
-    max-width: 200px;
-    margin-bottom: 20px;
-  }
 }
 </style>
 
 <style>
 /* English locale adjustments (unscoped to target html[lang]) */
-html[lang="en"] .main-title {
-  font-size: 3.5rem;
-  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  letter-spacing: -1px;
-}
-
-html[lang="en"] .hero-desc {
-  text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  letter-spacing: 0;
-}
-
-html[lang="en"] .slogan-text {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  letter-spacing: 0;
-}
-
-html[lang="en"] .tag-row {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
 html[lang="en"] .navbar .nav-links {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }

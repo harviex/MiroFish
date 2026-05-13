@@ -3,7 +3,32 @@
 </template>
 
 <script setup>
-// 使用 Vue Router 来管理页面
+import { watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+
+const route = useRoute()
+const i18n = useI18n()
+
+const pageTitles = {
+  Home: 'MiroFish - 预测万物',
+  Process: 'MiroFish - 模拟中',
+  Simulation: 'MiroFish - 模拟运行',
+  SimulationRun: 'MiroFish - 模拟运行',
+  Report: 'MiroFish - 报告生成',
+  Interaction: 'MiroFish - 深度互动',
+}
+
+function updateTitle() {
+  const base = pageTitles[route.name]
+  document.title = base || 'MiroFish - 预测万物'
+}
+
+watch(() => route.name, updateTitle)
+watch(i18n.locale, updateTitle)
+onMounted(updateTitle)
+
+// MainView will call window.__updateTabTitle(stepNum) to show step
 </script>
 
 <style>

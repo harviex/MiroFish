@@ -1,14 +1,33 @@
 services:
   mirofish:
-    image: ghcr.io/666ghj/mirofish:latest
-    # 加速镜像（如拉取缓慢可替换上方地址）
-    # image: ghcr.nju.edu.cn/666ghj/mirofish:latest
+    image: ghcr.nju.edu.cn/666ghj/mirofish:latest
+    # 原始镜像（拉取缓慢时使用上方加速镜像）
+    # image: ghcr.io/666ghj/mirofish:latest
     container_name: mirofish
     env_file:
       - .env
     ports:
-      - "3000:3000"
-      - "5001:5001"
+      - "3003:3000"
+      - "5002:5001"
     restart: unless-stopped
     volumes:
+      # Persistent data (survives container rebuild)
       - ./backend/uploads:/app/backend/uploads
+      - ./data:/app/data
+      - ./locales:/app/locales
+      # Full backend app code mounting (development)
+      - ./backend/app:/app/backend/app
+      # Patched backend files (增强的LLM客户端，支持限流重试+300s超时)
+      - ./patches/llm_client.py:/app/backend/app/utils/llm_client.py:ro
+      # Full frontend source mounting (development)
+      - ./frontend/src:/app/frontend/src:rw
+      # Persist frontend node_modules across container rebuilds
+      - frontend-node-modules:/app/frontend/node_modules
+      # Patched frontend files
+      - ./patches/vite.config.js:/app/frontend/vite.config.js:ro
+      - ./patches/src_api_index.js:/app/frontend/src/api/index.js:ro
+      - ./frontend/index.html:/app/frontend/index.html:ro
+
+# Named volumes for persistent dependencies across container rebuilds
+volumes:
+  frontend-node-modules:

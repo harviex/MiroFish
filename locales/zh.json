@@ -326,7 +326,13 @@
     "notStarted": "未开始",
     "roundsProgress": "{current}/{total} 轮",
     "untitledSimulation": "未命名模拟",
-    "unknownFile": "未知文件"
+    "unknownFile": "未知文件",
+    "delete": "删除记录",
+    "deleteConfirmTitle": "确认删除",
+    "deleteConfirmMessage": "确定要删除「{title}」吗？此操作将删除该项目的所有关联数据，无法恢复。",
+    "cancelDelete": "取消",
+    "confirmDelete": "确认删除",
+    "deleteFailed": "删除失败"
   },
   "api": {
     "projectNotFound": "项目不存在: {id}",

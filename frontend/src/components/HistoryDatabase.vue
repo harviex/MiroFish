@@ -47,6 +47,12 @@
               :class="{ available: project.report_id, unavailable: !project.report_id }"
               :title="$t('history.analysisReport')"
             >◆</span>
+            <!-- 删除按钮 -->
+            <span 
+              class="status-icon delete-btn" 
+              :title="$t('history.delete')"
+              @click.stop="confirmDelete(index, project)"
+            >🗑</span>
           </div>
         </div>
 
@@ -187,6 +193,27 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- 删除确认弹窗 -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showDeleteConfirm" class="modal-overlay delete-modal-overlay" @click.self="cancelDelete">
+          <div class="modal-content delete-modal">
+            <div class="delete-modal-icon">⚠️</div>
+            <h3 class="delete-modal-title">{{ $t('history.deleteConfirmTitle') }}</h3>
+            <p class="delete-modal-message">{{ deleteConfirmMessage }}</p>
+            <div class="delete-modal-actions">
+              <button class="modal-btn btn-cancel" @click="cancelDelete">
+                {{ $t('history.cancelDelete') }}
+              </button>
+              <button class="modal-btn btn-confirm-delete" @click="executeDelete">
+                {{ $t('history.confirmDelete') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -194,7 +221,7 @@
 import { ref, computed, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getSimulationHistory } from '../api/simulation'
+import { getSimulationHistory, deleteSimulationProject } from '../api/simulation'
 
 const router = useRouter()
 const route = useRoute()
@@ -207,6 +234,8 @@ const isExpanded = ref(false)
 const hoveringCard = ref(null)
 const historyContainer = ref(null)
 const selectedProject = ref(null)  // 当前选中的项目（用于弹窗）
+const showDeleteConfirm = ref(false)  // 删除确认弹窗
+const deleteTarget = ref(null)  // 待删除的项目
 let observer = null
 let isAnimating = false  // 动画锁，防止闪烁
 let expandDebounceTimer = null  // 防抖定时器
@@ -433,6 +462,46 @@ const goToReport = () => {
       params: { reportId: selectedProject.value.report_id }
     })
     closeModal()
+  }
+}
+
+// 删除确认消息
+const deleteConfirmMessage = computed(() => {
+  if (!deleteTarget.value) return ''
+  const title = getSimulationTitle(deleteTarget.value.simulation_requirement)
+  return t('history.deleteConfirmMessage', { title })
+})
+
+// 打开删除确认弹窗（阻止冒泡，避免触发卡片点击）
+const confirmDelete = (index, project) => {
+  deleteTarget.value = project
+  showDeleteConfirm.value = true
+}
+
+// 取消删除
+const cancelDelete = () => {
+  deleteTarget.value = null
+  showDeleteConfirm.value = false
+}
+
+// 执行删除
+const executeDelete = async () => {
+  if (!deleteTarget.value?.project_id) return
+
+  try {
+    const response = await deleteSimulationProject(deleteTarget.value.project_id)
+    if (response.success) {
+      // 从列表中移除
+      projects.value = projects.value.filter(p => p.project_id !== deleteTarget.value.project_id)
+    } else {
+      alert(response.error || t('history.deleteFailed'))
+    }
+  } catch (error) {
+    console.error('删除失败:', error)
+    alert(t('history.deleteFailed'))
+  } finally {
+    deleteTarget.value = null
+    showDeleteConfirm.value = false
   }
 }
 
@@ -730,6 +799,17 @@ onUnmounted(() => {
 .status-icon.unavailable {
   color: #D1D5DB;
   opacity: 0.5;
+}
+
+/* 删除按钮 */
+.status-icon.delete-btn {
+  cursor: pointer;
+  opacity: 0.4;
+  transition: all 0.2s ease;
+}
+.status-icon.delete-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 /* 轮数进度显示 */
@@ -1338,5 +1418,70 @@ onUnmounted(() => {
   letter-spacing: 0.3px;
   text-align: center;
   line-height: 1.5;
+}
+
+/* 删除确认弹窗 */
+.delete-modal {
+  text-align: center;
+  padding: 32px;
+}
+
+.delete-modal-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.delete-modal-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 12px;
+}
+
+.delete-modal-message {
+  font-size: 0.9rem;
+  color: #6B7280;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-cancel,
+.btn-confirm-delete {
+  flex: 1;
+  padding: 12px 20px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel {
+  background: #F9FAFB;
+  color: #374151;
+}
+.btn-cancel:hover {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+}
+
+.btn-confirm-delete {
+  background: #DC2626;
+  color: white;
+  border-color: #DC2626;
+}
+.btn-confirm-delete:hover {
+  background: #B91C1C;
+  border-color: #B91C1C;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3);
 }
 </style>

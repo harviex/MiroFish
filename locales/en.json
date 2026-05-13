@@ -326,7 +326,13 @@
     "notStarted": "Not started",
     "roundsProgress": "{current}/{total} rounds",
     "untitledSimulation": "Untitled simulation",
-    "unknownFile": "Unknown file"
+    "unknownFile": "Unknown file",
+    "delete": "Delete record",
+    "deleteConfirmTitle": "Confirm deletion",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{title}\"? This will remove all associated data and cannot be undone.",
+    "cancelDelete": "Cancel",
+    "confirmDelete": "Confirm delete",
+    "deleteFailed": "Delete failed"
   },
   "api": {
     "projectNotFound": "Project not found: {id}",

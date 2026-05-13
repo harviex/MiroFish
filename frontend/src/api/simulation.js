@@ -193,3 +193,11 @@ export const getSimulationHistory = (limit = 20) => {
   return service.get('/api/simulation/history', { params: { limit } })
 }
 
+/**
+ * 删除模拟项目
+ * @param {string} projectId - 项目ID
+ */
+export const deleteSimulationProject = (projectId) => {
+  return service.delete(`/api/graph/project/${projectId}`)
+}
+
