@@ -74,18 +74,6 @@
 
             <!-- 增量调整 -->
             <div class="expert-adjust">
-              <!-- 专家数量控制 -->
-              <div class="expert-count-row">
-                <label class="expert-count-label">专家数量：</label>
-                <input
-                  type="number"
-                  v-model.number="expertCount"
-                  class="expert-count-input"
-                  min="1"
-                  max="20"
-                />
-                <span class="expert-count-unit">人</span>
-              </div>
               <!-- 追加数量控制 -->
               <div class="expert-count-row">
                 <label class="expert-count-label">追加数量：</label>
@@ -98,9 +86,14 @@
                 />
                 <span class="expert-count-unit">人（负数移除）</span>
               </div>
+              <textarea
+                v-model="additionalExpertRequest"
+                class="expert-input"
+                placeholder="是否需要增加其他角色？（例：添加一位持反对意见的学者）"
+                rows="2"
+              ></textarea>
               <div class="expert-actions-row">
                 <button class="action-btn small" @click="handleAddExperts">+ 追加角色</button>
-                <button class="action-btn small ghost" @click="handleRegenerateExperts">🔄 重新生成</button>
               </div>
             </div>
           </div>
@@ -318,8 +311,8 @@ const switchMsg = ref('')
 const switchMsgType = ref('')
 
 // 专家会堂状态
-const expertCount = ref(10)
 const addCount = ref(0)
+const additionalExpertRequest = ref('')
 const selectedExpertIndices = ref([])
 const intentAnalyzing = ref(false)
 const expertsGenerating = ref(false)
@@ -427,10 +420,12 @@ const handleGenerateExperts = async () => {
     const res = await generateExperts({
       sim_requirement: formData.value.simulationRequirement,
       selected_domains: selectedDomains,
-      count: expertCount.value
+      count: 10
     })
     if (res.success) {
       generatedExperts.value = res.data.experts || []
+      // 默认全选
+      selectedExpertIndices.value = generatedExperts.value.map((_, i) => i)
     } else {
       alert(res.error || '生成失败')
     }
@@ -481,7 +476,7 @@ const handleAddExperts = async () => {
       sim_requirement: formData.value.simulationRequirement,
       selected_domains: selectedDomains,
       existing_experts: generatedExperts.value,
-      additional_request: '',
+      additional_request: additionalExpertRequest.value,
       count: currentCount + n
     })
     if (res.success) {
@@ -496,37 +491,6 @@ const handleAddExperts = async () => {
   } catch (error) {
     console.error('追加角色失败:', error)
     alert('追加角色失败: ' + (error.message || '网络错误'))
-  } finally {
-    expertsGenerating.value = false
-  }
-}
-
-// 重新生成
-const handleRegenerateExperts = async () => {
-  if (generatedExperts.value.length === 0) return
-
-  const targetCount = Math.max(1, expertCount.value)
-  expertCount.value = targetCount
-
-  expertsGenerating.value = true
-  generatedExperts.value = []
-  selectedExpertIndices.value = []
-
-  try {
-    const selectedDomains = selectedDomainIndices.value.map(i => intentAnalyzed.value.domains[i])
-    const res = await generateExperts({
-      sim_requirement: formData.value.simulationRequirement,
-      selected_domains: selectedDomains,
-      count: targetCount
-    })
-    if (res.success) {
-      generatedExperts.value = res.data.experts || []
-    } else {
-      alert(res.error || '重新生成失败')
-    }
-  } catch (error) {
-    console.error('重新生成专家阵容失败:', error)
-    alert('重新生成失败: ' + (error.message || '网络错误'))
   } finally {
     expertsGenerating.value = false
   }
@@ -1061,6 +1025,19 @@ const startSimulation = () => {
   font-size: 0.7rem;
   color: #999;
 }
+/* 追加数量输入 */
+.expert-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
 /* 追加数量输入 */
 .expert-actions-row {
   display: flex;
