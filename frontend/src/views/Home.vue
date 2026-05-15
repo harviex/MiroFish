@@ -21,7 +21,7 @@
           </div>
           
           <!-- Step 1: 意图分析结果 -->
-          <div v-if="intentAnalyzed" class="panel-card intent-card">
+          <div v-if="currentStep === 1 && intentAnalyzed" class="panel-card intent-card">
             <div class="card-title">🎯 研讨分析</div>
             <div class="int-summary">{{ intentAnalyzed.summary }}</div>
             <div class="int-label">建议研讨领域：</div>
@@ -50,9 +50,9 @@
           </div>
 
           <!-- Step 2: 专家阵容展示 -->
-          <div v-if="generatedExperts.length > 0" class="panel-card expert-card">
+          <div v-if="currentStep === 2 && generatedExperts.length > 0" class="panel-card expert-card">
             <div class="card-title">👥 专家阵容 ({{ generatedExperts.length }}人)</div>
-            
+
             <div class="expert-scroll-area">
               <div
                 v-for="(expert, i) in generatedExperts"
@@ -95,6 +95,12 @@
               <div class="expert-actions-row">
                 <button class="action-btn small" @click="handleAddExperts">+ 追加角色</button>
               </div>
+            </div>
+
+            <!-- 步骤导航 -->
+            <div class="step-nav">
+              <button class="action-btn small ghost" @click="goPrevStep">⬅ 上一步</button>
+              <button class="action-btn small primary" @click="goNextStep">下一步 ✅</button>
             </div>
           </div>
           
@@ -205,7 +211,21 @@
                 <div class="model-badge">⚙ {{ activeModelDisplay }}</div>
               </div>
 
-              <!-- 意图分析 / 生成专家按钮 -->
+              <!-- 现实种子展示 (Step 2 时显示) -->
+            <div v-if="currentStep === 2 && generatedExperts.length > 0" class="reality-seed-display">
+              <div class="console-header">
+                <span class="console-label">生成的专家现实种子</span>
+                <button class="action-btn small ghost" @click="copyRealitySeed" title="复制">📋 复制</button>
+              </div>
+              <textarea
+                v-model="realitySeedContent"
+                class="code-input reality-textarea"
+                rows="8"
+                placeholder="点击「下一步」将选中专家插入此处，可手动编辑"
+              ></textarea>
+            </div>
+
+            <!-- 意图分析 / 生成专家按钮 -->
               <button
                 class="generate-experts-btn"
                 @click="!intentAnalyzed ? handleAnalyzeIntent() : handleGenerateExperts()"
@@ -314,6 +334,7 @@ const switchMsgType = ref('')
 const addCount = ref(0)
 const additionalExpertRequest = ref('')
 const selectedExpertIndices = ref([])
+const currentStep = ref(1) // 1=分析结果 2=专家阵容
 const intentAnalyzing = ref(false)
 const expertsGenerating = ref(false)
 const intentAnalyzed = ref(null)  // { summary, domains }
@@ -426,6 +447,8 @@ const handleGenerateExperts = async () => {
       generatedExperts.value = res.data.experts || []
       // 默认全选
       selectedExpertIndices.value = generatedExperts.value.map((_, i) => i)
+      // 切换到专家阵容步骤
+      currentStep.value = 2
     } else {
       alert(res.error || '生成失败')
     }
@@ -480,10 +503,13 @@ const handleAddExperts = async () => {
       count: currentCount + n
     })
     if (res.success) {
-      const newExperts = (res.data.experts || []).filter(e =>
+      const rawExperts = res.data.experts || []
+      // 前端二次防御：过滤空数据 & 去重
+      const validNewExperts = rawExperts.filter(e =>
+        e && e.name && e.identity && e.domain &&
         !generatedExperts.value.some(orig => orig.name === e.name)
       )
-      generatedExperts.value = generatedExperts.value.concat(newExperts)
+      generatedExperts.value = generatedExperts.value.concat(validNewExperts)
       addCount.value = 0
     } else {
       alert(res.error || '追加失败')
@@ -493,6 +519,55 @@ const handleAddExperts = async () => {
     alert('追加角色失败: ' + (error.message || '网络错误'))
   } finally {
     expertsGenerating.value = false
+  }
+}
+
+// 上一步：回到建议研讨领域
+const goPrevStep = () => {
+  currentStep.value = 1
+}
+
+// 现实种子内容（可编辑）
+const realitySeedContent = ref('')
+
+// 点击下一步：把选中专家的文本插入现实种子
+const goNextStep = () => {
+  const experts = generatedExperts.value
+  if (!experts.length) return
+  const lines = ['【专家阵容 - 现实种子】']
+  // 只插入选中的专家，未选中的追加进去
+  const selectedSet = new Set(selectedExpertIndices.value)
+  const targetExperts = selectedSet.size > 0
+    ? experts.filter((_, i) => selectedSet.has(i))
+    : experts
+  targetExperts.forEach((e, i) => {
+    lines.push(`${i + 1}. ${e.name} - ${e.identity}（${e.domain}）`)
+    lines.push(`   背景：${e.background || '暂无'}`)
+    lines.push(`   立场：${e.stance || '暂无'}`)
+    lines.push(`   风格：${e.speaking_style || '暂无'}`)
+    lines.push('')
+  })
+  // 追加到仿真提示末尾
+  const seed = lines.join('\n')
+  formData.value.simulationRequirement += (formData.value.simulationRequirement.trim() ? '\n\n' : '') + seed
+  realitySeedContent.value = seed
+}
+
+// 复制现实种子
+const copyRealitySeed = async () => {
+  const text = realitySeedContent.value
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+    alert('已复制到剪贴板')
+  } catch {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+    alert('已复制到剪贴板')
   }
 }
 
@@ -1432,6 +1507,33 @@ const startSimulation = () => {
   0% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2); }
   70% { box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); }
   100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+}
+
+/* 现实种子展示 */
+.reality-seed-display {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.reality-seed-display .console-header {
+  background: #fafafa;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.reality-textarea {
+  background: #fafafa;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #333;
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+  outline: none;
 }
 
 /* 响应式适配 */

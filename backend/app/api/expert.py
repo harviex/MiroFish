@@ -177,19 +177,22 @@ def generate_experts():
         # 已有专家提示（增量模式）
         existing_hint = ""
         if existing_experts:
-            existing_hint = "【已有专家阵容】\n当前已有以下专家，请根据新需求追加合适的新角色：\n"
+            existing_hint = "【已有专家阵容】\n当前已有以下专家：\n"
             for i, e in enumerate(existing_experts, 1):
                 existing_hint += f"{i}. {e.get('name', '')} - {e.get('identity', '')}（{e.get('domain', '')}）\n"
-            existing_hint += "注意：不要重复已有角色，请补充新的视角。"
+            # 明确告知 LLM 只生成新增角色，且返回列表必须为纯新增（不包含任何已有角色）
+            existing_hint += "\n【重要】你只需输出需要新增的角色，不要包含以上已有角色。返回的 experts 数组仅包含新增角色。"
 
         # 数量指令
         count_instruction = ""
         if existing_experts and not additional_request:
-            count_instruction = f"4. 数量：在已有 {len(existing_experts)} 人基础上，追加 {target_count - len(existing_experts)} 位新专家。"
+            new_count = max(target_count - len(existing_experts), 1)
+            count_instruction = f"4. 数量：仅生成 {new_count} 位与已有专家不同的新专家。"
         elif not existing_experts:
             count_instruction = f"4. 数量：生成 {target_count} 位专家。"
         else:
-            count_instruction = f"4. 数量：在已有 {len(existing_experts)} 人基础上，追加约 {max(target_count - len(existing_experts), 1)} 位新专家。"
+            new_count = max(target_count - len(existing_experts), 1)
+            count_instruction = f"4. 数量：仅生成 {new_count} 位与已有专家不同的新专家，需考虑：{additional_request}。"
 
         client = _get_llm_client(data)
         messages = [
