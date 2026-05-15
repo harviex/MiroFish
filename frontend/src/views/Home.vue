@@ -54,11 +54,13 @@
             <div class="card-title">👥 专家阵容 ({{ generatedExperts.length }}人)</div>
             
             <div class="expert-scroll-area">
-              <div 
-                v-for="(expert, i) in generatedExperts" 
+              <div
+                v-for="(expert, i) in generatedExperts"
                 :key="i" class="expert-chip"
+                :class="{ 'expert-checked': selectedExpertIndices.includes(i) }"
               >
                 <div class="expert-chip-header">
+                  <input type="checkbox" :value="i" v-model="selectedExpertIndices" class="expert-checkbox" />
                   <span class="expert-name">{{ expert.name }}</span>
                   <span class="expert-identity">{{ expert.identity }}</span>
                 </div>
@@ -79,20 +81,26 @@
                   type="number"
                   v-model.number="expertCount"
                   class="expert-count-input"
-                  min="2"
+                  min="1"
                   max="20"
                 />
                 <span class="expert-count-unit">人</span>
               </div>
-              <textarea
-                v-model="additionalExpertRequest"
-                class="expert-input"
-                placeholder="是否需要增加其他角色？（例：添加一位持反对意见的学者）"
-                rows="2"
-              ></textarea>
+              <!-- 追加数量控制 -->
+              <div class="expert-count-row">
+                <label class="expert-count-label">追加数量：</label>
+                <input
+                  type="number"
+                  v-model.number="addCount"
+                  class="expert-count-input"
+                  min="-20"
+                  max="20"
+                />
+                <span class="expert-count-unit">人（负数移除）</span>
+              </div>
               <div class="expert-actions-row">
                 <button class="action-btn small" @click="handleAddExperts">+ 追加角色</button>
-                <button class="action-btn small ghost" @click="handleRegenerateExperts">🎲 重新生成</button>
+                <button class="action-btn small ghost" @click="handleRegenerateExperts">🔄 重新生成</button>
               </div>
             </div>
           </div>
@@ -311,12 +319,13 @@ const switchMsgType = ref('')
 
 // 专家会堂状态
 const expertCount = ref(10)
+const addCount = ref(0)
+const selectedExpertIndices = ref([])
 const intentAnalyzing = ref(false)
 const expertsGenerating = ref(false)
 const intentAnalyzed = ref(null)  // { summary, domains }
 const selectedDomainIndices = ref([])
 const generatedExperts = ref([])
-const additionalExpertRequest = ref('')
 
 // 计算属性:当前模型显示
 const activeModelDisplay = computed(() => {
@@ -408,11 +417,11 @@ const handleAnalyzeIntent = async () => {
 // Step 2: 生成专家阵容
 const handleGenerateExperts = async () => {
   if (!intentAnalyzed.value || selectedDomainIndices.value.length === 0) return
-  
+
   expertsGenerating.value = true
   generatedExperts.value = []
-  additionalExpertRequest.value = ''
-  
+  selectedExpertIndices.value = []
+
   try {
     const selectedDomains = selectedDomainIndices.value.map(i => intentAnalyzed.value.domains[i])
     const res = await generateExperts({
@@ -433,28 +442,54 @@ const handleGenerateExperts = async () => {
   }
 }
 
-// 追加角色
+// 追加/移除角色
 const handleAddExperts = async () => {
-  if (!additionalExpertRequest.value.trim()) return
-  
+  const n = addCount.value
+  if (n === 0) return
+
+  // 移除模式
+  if (n < 0) {
+    const removeCount = Math.min(Math.abs(n), generatedExperts.value.length)
+    // 优先移除已勾选的
+    const checked = new Set(selectedExpertIndices.value)
+    const indicesToRemove = [...checked]
+    // 如果勾选的不够，从末尾补
+    if (indicesToRemove.length < removeCount) {
+      for (let i = generatedExperts.value.length - 1; i >= 0 && indicesToRemove.length < removeCount; i--) {
+        if (!indicesToRemove.includes(i)) indicesToRemove.push(i)
+      }
+    }
+    const removeSet = new Set(indicesToRemove.slice(0, removeCount))
+    generatedExperts.value = generatedExperts.value.filter((_, i) => !removeSet.has(i))
+    selectedExpertIndices.value = selectedExpertIndices.value.filter(i => !removeSet.has(i))
+    addCount.value = 0
+    return
+  }
+
+  // 添加模式
+  if (generatedExperts.value.length === 0) {
+    alert('请先生成初始专家阵容')
+    return
+  }
+
   expertsGenerating.value = true
-  
+
   try {
     const selectedDomains = selectedDomainIndices.value.map(i => intentAnalyzed.value.domains[i])
+    const currentCount = generatedExperts.value.length
     const res = await generateExperts({
       sim_requirement: formData.value.simulationRequirement,
       selected_domains: selectedDomains,
       existing_experts: generatedExperts.value,
-      additional_request: additionalExpertRequest.value,
-      count: generatedExperts.value.length + 3
+      additional_request: '',
+      count: currentCount + n
     })
     if (res.success) {
-      // 合并且去重
-      const newExperts = (res.data.experts || []).filter(e => 
+      const newExperts = (res.data.experts || []).filter(e =>
         !generatedExperts.value.some(orig => orig.name === e.name)
       )
       generatedExperts.value = generatedExperts.value.concat(newExperts)
-      additionalExpertRequest.value = ''
+      addCount.value = 0
     } else {
       alert(res.error || '追加失败')
     }
@@ -468,12 +503,33 @@ const handleAddExperts = async () => {
 
 // 重新生成
 const handleRegenerateExperts = async () => {
-  // 重置分析结果，重新开始
-  intentAnalyzed.value = null
+  if (generatedExperts.value.length === 0) return
+
+  const targetCount = Math.max(1, expertCount.value)
+  expertCount.value = targetCount
+
+  expertsGenerating.value = true
   generatedExperts.value = []
-  selectedDomainIndices.value = []
-  // 自动重新分析
-  handleAnalyzeIntent()
+  selectedExpertIndices.value = []
+
+  try {
+    const selectedDomains = selectedDomainIndices.value.map(i => intentAnalyzed.value.domains[i])
+    const res = await generateExperts({
+      sim_requirement: formData.value.simulationRequirement,
+      selected_domains: selectedDomains,
+      count: targetCount
+    })
+    if (res.success) {
+      generatedExperts.value = res.data.experts || []
+    } else {
+      alert(res.error || '重新生成失败')
+    }
+  } catch (error) {
+    console.error('重新生成专家阵容失败:', error)
+    alert('重新生成失败: ' + (error.message || '网络错误'))
+  } finally {
+    expertsGenerating.value = false
+  }
 }
 
 // 触发文件选择
@@ -923,6 +979,52 @@ const startSimulation = () => {
   color: #999;
 }
 
+/* 复选框 */
+.expert-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--orange);
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+.expert-chip-checked {
+  border-color: var(--orange) !important;
+  background: #fff3e0 !important;
+}
+
+/* 追加数量输入 */
+.expert-count-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.expert-count-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #999;
+  white-space: nowrap;
+}
+.expert-count-input {
+  width: 50px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  outline: none;
+  text-align: center;
+}
+.expert-count-input:focus {
+  border-color: var(--orange);
+}
+.expert-count-unit {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #999;
+}
+
 /* 增量调整区域 */
 .expert-adjust {
   border-top: 1px solid var(--border);
@@ -959,17 +1061,7 @@ const startSimulation = () => {
   font-size: 0.7rem;
   color: #999;
 }
-.expert-input {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 0.8rem;
-  font-family: inherit;
-  resize: vertical;
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
+/* 追加数量输入 */
 .expert-actions-row {
   display: flex;
   gap: 8px;
