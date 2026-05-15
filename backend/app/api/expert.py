@@ -189,7 +189,7 @@ def generate_experts():
         elif not existing_experts:
             count_instruction = f"4. 数量：生成 {target_count} 位专家。"
         else:
-            count_instruction = f"4. 数量：生成足够覆盖各领域的专家（预期总数约 {target_count} 人）。"
+            count_instruction = f"4. 数量：在已有 {len(existing_experts)} 人基础上，追加约 {max(target_count - len(existing_experts), 1)} 位新专家。"
 
         client = _get_llm_client(data)
         messages = [

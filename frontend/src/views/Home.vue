@@ -20,20 +20,13 @@
             <span class="status-dot">◇</span> 专家会堂
           </div>
           
-          <!-- 空状态 -->
-          <div v-if="!intentAnalyzed && !expertsGenerating && generatedExperts.length === 0" class="expert-hall-empty">
-            <div class="empty-icon">📋</div>
-            <div class="empty-title">研讨组局向导</div>
-            <div class="empty-desc">在右侧输入模拟提示词后，点击"生成专家阵容"按钮，AI 将自动为您组建研讨团队。</div>
-          </div>
-
           <!-- Step 1: 意图分析结果 -->
-          <div v-if="intentAnalyzed && !domainSelected" class="panel-card intent-card">
+          <div v-if="intentAnalyzed" class="panel-card intent-card">
             <div class="card-title">🎯 研讨分析</div>
             <div class="int-summary">{{ intentAnalyzed.summary }}</div>
             <div class="int-label">建议研讨领域：</div>
             <div class="int-domains">
-              <label v-for="(d, i) in intentAnalyzed.domains" :key="i" class="domain-check">
+              <label v-for="(d, i) in (intentAnalyzed?.domains || [])" :key="i" class="domain-check">
                 <input type="checkbox" v-model="selectedDomainIndices" :value="i" />
                 <span class="domain-label">{{ d.label }}</span>
                 <span class="domain-reason">{{ d.reason }}</span>
@@ -79,6 +72,18 @@
 
             <!-- 增量调整 -->
             <div class="expert-adjust">
+              <!-- 专家数量控制 -->
+              <div class="expert-count-row">
+                <label class="expert-count-label">专家数量：</label>
+                <input
+                  type="number"
+                  v-model.number="expertCount"
+                  class="expert-count-input"
+                  min="2"
+                  max="20"
+                />
+                <span class="expert-count-unit">人</span>
+              </div>
               <textarea
                 v-model="additionalExpertRequest"
                 class="expert-input"
@@ -199,15 +204,22 @@
                 <div class="model-badge">⚙ {{ activeModelDisplay }}</div>
               </div>
 
-              <!-- 生成专家阵容按钮 -->
-              <button 
+              <!-- 意图分析 / 生成专家按钮 -->
+              <button
                 class="generate-experts-btn"
-                @click="handleAnalyzeIntent"
-                :disabled="!canAnalyzeExperts || intentAnalyzing || expertsGenerating"
+                @click="!intentAnalyzed ? handleAnalyzeIntent() : handleGenerateExperts()"
+                :disabled="!(formData.simulationRequirement.trim() !== '') || intentAnalyzing || expertsGenerating"
+                v-if="!intentAnalyzed"
               >
-                <span v-if="!intentAnalyzing && !expertsGenerating">🎲 生成专家阵容</span>
-                <span v-else-if="intentAnalyzing">🎯 分析研讨意图中...</span>
-                <span v-else>👥 组建专家团队中...</span>
+                <span>🎯 分析研讨意图</span>
+              </button>
+              <button
+                class="generate-experts-btn"
+                @click="handleGenerateExperts()"
+                :disabled="!intentAnalyzed || intentAnalyzing || expertsGenerating"
+                v-if="intentAnalyzed"
+              >
+                <span>👥 生成专家阵容</span>
               </button>
 
               <!-- 常驻模型切换栏 -->
@@ -298,6 +310,7 @@ const switchMsg = ref('')
 const switchMsgType = ref('')
 
 // 专家会堂状态
+const expertCount = ref(10)
 const intentAnalyzing = ref(false)
 const expertsGenerating = ref(false)
 const intentAnalyzed = ref(null)  // { summary, domains }
@@ -369,10 +382,18 @@ const handleAnalyzeIntent = async () => {
   
   try {
     const res = await analyzeIntent({ sim_requirement: formData.value.simulationRequirement })
-    if (res.data?.success) {
-      intentAnalyzed.value = res.data.data
-      // 默认全选所有领域
-      selectedDomainIndices.value = intentAnalyzed.value.domains.map((_, i) => i)
+    if (res.success) {
+      intentAnalyzed.value = res.data
+      // 默认全选所有领域 (防御性: 检查 domains 是否存在)
+      const domains = intentAnalyzed.value?.domains
+      if (domains && Array.isArray(domains)) {
+        selectedDomainIndices.value = domains.map((_, i) => i)
+      } else {
+        console.warn('意图分析返回缺少 domains 字段:', res.data)
+        selectedDomainIndices.value = []
+        alert('意图分析结果格式异常，缺少领域信息。请重试。')
+        intentAnalyzed.value = null
+      }
     } else {
       alert(res.data?.error || '分析失败')
     }
@@ -397,12 +418,12 @@ const handleGenerateExperts = async () => {
     const res = await generateExperts({
       sim_requirement: formData.value.simulationRequirement,
       selected_domains: selectedDomains,
-      count: 10
+      count: expertCount.value
     })
-    if (res.data?.success) {
-      generatedExperts.value = res.data.data.experts || []
+    if (res.success) {
+      generatedExperts.value = res.data.experts || []
     } else {
-      alert(res.data?.error || '生成失败')
+      alert(res.error || '生成失败')
     }
   } catch (error) {
     console.error('生成专家阵容失败:', error)
@@ -427,15 +448,15 @@ const handleAddExperts = async () => {
       additional_request: additionalExpertRequest.value,
       count: generatedExperts.value.length + 3
     })
-    if (res.data?.success) {
+    if (res.success) {
       // 合并且去重
-      const newExperts = (res.data.data.experts || []).filter(e => 
+      const newExperts = (res.data.experts || []).filter(e => 
         !generatedExperts.value.some(orig => orig.name === e.name)
       )
       generatedExperts.value = generatedExperts.value.concat(newExperts)
       additionalExpertRequest.value = ''
     } else {
-      alert(res.data?.error || '追加失败')
+      alert(res.error || '追加失败')
     }
   } catch (error) {
     console.error('追加角色失败:', error)
@@ -788,9 +809,9 @@ const startSimulation = () => {
   border-radius: 6px;
 }
 .action-btn.primary {
-  background: var(--black);
+  background: #000;
   color: #fff;
-  border-color: var(--black);
+  border-color: #000;
 }
 .action-btn.primary:hover { opacity: 0.85; }
 .action-btn.small {
@@ -907,6 +928,36 @@ const startSimulation = () => {
   border-top: 1px solid var(--border);
   padding-top: 12px;
   margin-top: 4px;
+}
+.expert-count-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.expert-count-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #999;
+  white-space: nowrap;
+}
+.expert-count-input {
+  width: 50px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  outline: none;
+  text-align: center;
+}
+.expert-count-input:focus {
+  border-color: var(--orange);
+}
+.expert-count-unit {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #999;
 }
 .expert-input {
   width: 100%;
