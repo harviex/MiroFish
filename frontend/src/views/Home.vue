@@ -211,21 +211,7 @@
                 <div class="model-badge">⚙ {{ activeModelDisplay }}</div>
               </div>
 
-              <!-- 现实种子展示 (Step 2 时显示) -->
-            <div v-if="currentStep === 2 && generatedExperts.length > 0" class="reality-seed-display">
-              <div class="console-header">
-                <span class="console-label">生成的专家现实种子</span>
-                <button class="action-btn small ghost" @click="copyRealitySeed" title="复制">📋 复制</button>
-              </div>
-              <textarea
-                v-model="realitySeedContent"
-                class="code-input reality-textarea"
-                rows="8"
-                placeholder="点击「下一步」将选中专家插入此处，可手动编辑"
-              ></textarea>
-            </div>
-
-            <!-- 意图分析 / 生成专家按钮 -->
+              <!-- 意图分析 / 生成专家按钮 -->
               <button
                 class="generate-experts-btn"
                 @click="!intentAnalyzed ? handleAnalyzeIntent() : handleGenerateExperts()"
@@ -527,48 +513,40 @@ const goPrevStep = () => {
   currentStep.value = 1
 }
 
-// 现实种子内容（可编辑）
-const realitySeedContent = ref('')
+// 现实种子文件名
+const seedFileName = ref('')
 
-// 点击下一步：把选中专家的文本插入现实种子
+// 点击下一步：将选中专家生成为 .md 文件并添加到现实种子上传列表
 const goNextStep = () => {
   const experts = generatedExperts.value
   if (!experts.length) return
-  const lines = ['【专家阵容 - 现实种子】']
-  // 只插入选中的专家，未选中的追加进去
   const selectedSet = new Set(selectedExpertIndices.value)
   const targetExperts = selectedSet.size > 0
     ? experts.filter((_, i) => selectedSet.has(i))
     : experts
+  if (!targetExperts.length) return
+
+  // 生成 Markdown 内容
+  const lines = ['# 专家阵容 - 现实种子\n']
   targetExperts.forEach((e, i) => {
-    lines.push(`${i + 1}. ${e.name} - ${e.identity}（${e.domain}）`)
-    lines.push(`   背景：${e.background || '暂无'}`)
-    lines.push(`   立场：${e.stance || '暂无'}`)
-    lines.push(`   风格：${e.speaking_style || '暂无'}`)
+    lines.push(`## ${i + 1}. ${e.name}\n`)
+    lines.push(`- **身份**: ${e.identity || '暂无'}`)
+    lines.push(`- **领域**: ${e.domain || '暂无'}`)
+    lines.push(`- **背景**: ${e.background || '暂无'}`)
+    lines.push(`- **立场**: ${e.stance || '暂无'}`)
+    lines.push(`- **风格**: ${e.speaking_style || '暂无'}`)
+    if (e.mindset) lines.push(`- **思维倾向**: ${e.mindset}`)
+    if (e.focus && e.focus.length) lines.push(`- **核心关注点**: ${e.focus.join('、')}`)
     lines.push('')
   })
-  // 追加到仿真提示末尾
-  const seed = lines.join('\n')
-  formData.value.simulationRequirement += (formData.value.simulationRequirement.trim() ? '\n\n' : '') + seed
-  realitySeedContent.value = seed
-}
+  const content = lines.join('\n')
+  const fileName = `专家阵容_${Date.now()}.md`
+  seedFileName.value = fileName
 
-// 复制现实种子
-const copyRealitySeed = async () => {
-  const text = realitySeedContent.value
-  if (!text) return
-  try {
-    await navigator.clipboard.writeText(text)
-    alert('已复制到剪贴板')
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    alert('已复制到剪贴板')
-  }
+  // 创建 File 对象并添加到上传列表
+  const blob = new Blob([content], { type: 'text/markdown' })
+  const file = new File([blob], fileName, { type: 'text/markdown' })
+  addFiles([file])
 }
 
 // 触发文件选择
@@ -972,7 +950,7 @@ const startSimulation = () => {
 
 .expert-chip-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: baseline;
   gap: 8px;
   margin-bottom: 6px;
@@ -981,6 +959,7 @@ const startSimulation = () => {
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--black);
+  text-align: left;
 }
 .expert-identity {
   font-family: var(--font-mono);
@@ -1507,33 +1486,6 @@ const startSimulation = () => {
   0% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2); }
   70% { box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); }
   100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
-}
-
-/* 现实种子展示 */
-.reality-seed-display {
-  margin-top: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-}
-.reality-seed-display .console-header {
-  background: #fafafa;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.reality-textarea {
-  background: #fafafa;
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: #333;
-  resize: vertical;
-  min-height: 120px;
-  line-height: 1.6;
-  outline: none;
 }
 
 /* 响应式适配 */
