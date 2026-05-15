@@ -586,7 +586,7 @@ PLAN_SYSTEM_PROMPT = """\
     ]
 }
 
-注意：sections数组最少2个，最多5个元素！"""
+注意：sections数组最少2个，最多5个元素！绝对不能返回空数组，否则报告无法生成。"""
 
 PLAN_USER_PROMPT_TEMPLATE = """\
 【预测场景设定】
@@ -1192,7 +1192,16 @@ class ReportAgent:
                     title=section_data.get("title", ""),
                     content=""
                 ))
-            
+
+            # 防御性：如果sections为空（LLM未按格式返回），用默认章节兜底
+            if not sections:
+                logger.warning(t('report.outlineEmptyFallback'))
+                sections = [
+                    ReportSection(title="预测场景与核心发现"),
+                    ReportSection(title="人群行为预测分析"),
+                    ReportSection(title="趋势展望与风险提示")
+                ]
+
             outline = ReportOutline(
                 title=response.get("title", "模拟分析报告"),
                 summary=response.get("summary", ""),

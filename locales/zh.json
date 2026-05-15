@@ -443,6 +443,7 @@
     "initReport": "初始化报告...",
     "startPlanningOutline": "开始规划报告大纲...",
     "outlineDone": "大纲规划完成，共{count}个章节",
+    "outlineEmptyFallback": "大纲规划返回空章节，使用默认结构",
     "generatingSection": "正在生成章节: {title} ({current}/{total})",
     "sectionDone": "章节 {title} 已完成",
     "assemblingReport": "正在组装完整报告...",

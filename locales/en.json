@@ -443,6 +443,7 @@
     "initReport": "Initializing report...",
     "startPlanningOutline": "Planning report outline...",
     "outlineDone": "Outline complete, {count} sections",
+    "outlineEmptyFallback": "Outline returned empty sections, using default structure",
     "generatingSection": "Generating section: {title} ({current}/{total})",
     "sectionDone": "Section {title} complete",
     "assemblingReport": "Assembling full report...",
