@@ -182,6 +182,7 @@ def generate_experts():
                 existing_hint += f"{i}. {e.get('name', '')} - {e.get('identity', '')}（{e.get('domain', '')}）\n"
             # 明确告知 LLM 只生成新增角色，且返回列表必须为纯新增（不包含任何已有角色）
             existing_hint += "\n【重要】你只需输出需要新增的角色，不要包含以上已有角色。返回的 experts 数组仅包含新增角色。"
+            existing_hint += "\n【禁止】绝对不要返回以上已有专家阵容中的任何一个人。必须创造全新的、不同姓名的新专家。"
 
         # 数量指令
         count_instruction = ""
