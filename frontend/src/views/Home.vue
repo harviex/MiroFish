@@ -92,14 +92,12 @@
                 placeholder="是否需要增加其他角色？（例：添加一位持反对意见的学者）"
                 rows="2"
               ></textarea>
-              <div class="expert-actions-row">
-                <button class="action-btn small" @click="handleAddExperts">+ 追加角色</button>
-              </div>
             </div>
 
-            <!-- 步骤导航 -->
+            <!-- 步骤导航 + 追加角色（同一行） -->
             <div class="step-nav">
               <button class="action-btn small ghost" @click="goPrevStep">⬅ 上一步</button>
+              <button class="action-btn small" @click="handleAddExperts">+ 追加角色</button>
               <button class="action-btn small primary" @click="goNextStep">下一步 ✅</button>
             </div>
           </div>
@@ -685,15 +683,14 @@ const startSimulation = () => {
 .main-content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 60px 40px;
+  padding: 30px 40px;
 }
 
 /* Dashboard 双栏布局 */
 .dashboard-section {
   display: flex;
   gap: 60px;
-  border-top: 1px solid var(--border);
-  padding-top: 60px;
+  padding-top: 30px;
   align-items: flex-start;
 }
 
@@ -1092,10 +1089,11 @@ const startSimulation = () => {
   line-height: 1.4;
 }
 
-/* 追加数量输入 */
-.expert-actions-row {
+/* 步骤导航（按钮同行） */
+.step-nav {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 /* 生成专家阵容按钮 */
