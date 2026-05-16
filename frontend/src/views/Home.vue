@@ -468,7 +468,7 @@ const handleAddExperts = async () => {
     return
   }
 
-  // 添加模式
+// 添加模式
   if (generatedExperts.value.length === 0) {
     alert('请先生成初始专家阵容')
     return
@@ -479,6 +479,7 @@ const handleAddExperts = async () => {
   try {
     const selectedDomains = selectedDomainIndices.value.map(i => intentAnalyzed.value.domains[i])
     const currentCount = generatedExperts.value.length
+    console.log('[追加角色] 请求参数:', {currentCount, addCount: n, targetCount: currentCount + n, domains: selectedDomains})
     const res = await generateExperts({
       sim_requirement: formData.value.simulationRequirement,
       selected_domains: selectedDomains,
@@ -486,13 +487,22 @@ const handleAddExperts = async () => {
       additional_request: additionalExpertRequest.value,
       count: currentCount + n
     })
+    console.log('[追加角色] API返回:', res)
     if (res.success) {
       const rawExperts = res.data.experts || []
+      console.log('[追加角色] rawExperts:', rawExperts)
       // 前端二次防御：过滤空数据 & 去重
-      const validNewExperts = rawExperts.filter(e =>
-        e && e.name && e.identity && e.domain &&
-        !generatedExperts.value.some(orig => orig.name === e.name)
-      )
+      const validNewExperts = rawExperts.filter(e => {
+        const valid = e && e.name && e.identity && e.domain
+        const duplicate = generatedExperts.value.some(orig => orig.name === e.name)
+        if (!valid) console.log('[追加角色] 过滤掉无效专家:', e)
+        if (duplicate) console.log('[追加角色] 过滤掉重复专家:', e.name)
+        return valid && !duplicate
+      })
+      console.log('[追加角色] validNewExperts:', validNewExperts)
+      if (validNewExperts.length === 0) {
+        alert('没有新增角色（LLM返回的专家可能已存在或格式异常）')
+      }
       generatedExperts.value = generatedExperts.value.concat(validNewExperts)
       addCount.value = 0
     } else {
