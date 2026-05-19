@@ -169,29 +169,16 @@
                     <li v-for="(r, i) in step2Data.mbti.reasoning" :key="i">{{ r }}</li>
                   </ul>
                 </div>
-                <div class="mbti-options">
+                <div class="edit-options">
                   <button
                     v-for="opt in step2Data.mbti.options"
                     :key="opt.type"
-                    class="mbti-option"
-                    :class="{ selected: step2Data.mbti.userChoice === opt.type, expanded: expandedMbti === opt.type }"
-                    @click="toggleMbtiExpand(opt.type)"
+                    class="edit-option"
+                    :class="{ selected: step2Data.mbti.userChoice === opt.type }"
+                    @click="step2Data.mbti.userChoice = opt.type"
                   >
-                    <span class="mbti-type">{{ opt.type }}</span>
-                    <span class="mbti-prob">{{ (opt.p * 100).toFixed(0) }}%</span>
-                    <span class="mbti-name">{{ getMbtiName(opt.type) }}</span>
-                    <Transition name="expand">
-                      <div v-if="expandedMbti === opt.type" class="option-detail" @click.stop>
-                        <div class="option-desc">{{ getMbtiDesc(opt.type) }}</div>
-                        <div class="option-traits">
-                          <span v-for="t in getMbtiTraits(opt.type)" :key="t" class="trait-tag">{{ t }}</span>
-                        </div>
-                        <div class="option-reason">💡 {{ getMbtiReason(opt.type) }}</div>
-                        <button class="mini-btn select-this" @click="step2Data.mbti.userChoice = opt.type; expandedMbti = null">
-                          ✓ 选择这个
-                        </button>
-                      </div>
-                    </Transition>
+                    <span class="edit-opt-name">{{ opt.type }} - {{ getMbtiName(opt.type) }}</span>
+                    <span class="edit-opt-desc">{{ (opt.p * 100).toFixed(0) }}% · {{ opt.reason }}</span>
                   </button>
                 </div>
                 <div class="mbti-alt-actions">
@@ -211,235 +198,217 @@
               </div>
 
               <!-- 大五人格 -->
-              <div v-if="step2Data.bigFive" class="guess-card" :class="{ expanded: expandedCard === 'bigFive' }">
-                <div class="guess-card-header" @click="toggleCardExpand('bigFive')">
+              <div v-if="step2Data.bigFive" class="guess-card">
+                <div class="guess-card-header">
                   <span class="guess-card-icon">📊</span>
                   <span class="guess-card-title">{{ $t('cultivation.bigFive') }}</span>
                   <span class="confidence-badge">{{ (step2Data.bigFive.confidence * 100).toFixed(0) }}%</span>
-                  <span class="expand-arrow">{{ expandedCard === 'bigFive' ? '▲' : '▼' }}</span>
                 </div>
-                <Transition name="expand">
-                  <div v-if="expandedCard === 'bigFive'" class="card-detail">
-                    <div class="current-value">
-                      <span class="value-label">AI推测：</span>
-                      <span class="value-name">{{ getBigFiveName(step2Data.bigFive.value) }}</span>
-                    </div>
-                    <div class="option-desc">{{ getBigFiveDesc(step2Data.bigFive.value) }}</div>
-                    <div class="option-reason">💡 {{ getBigFiveReason(step2Data.bigFive.value) }}</div>
-                    <div class="option-actions">
-                      <button class="mini-btn" @click="step2Data.bigFive.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
-                      <button class="mini-btn outline" @click="step2Data.bigFive.editing = true">✗ {{ $t('cultivation.modify') }}</button>
-                    </div>
-                    <div v-if="step2Data.bigFive.editing" class="edit-area">
-                      <div class="edit-options">
-                        <button
-                          v-for="opt in BIG_FIVE_OPTIONS"
-                          :key="opt"
-                          class="edit-option"
-                          :class="{ selected: step2Data.bigFive.value === opt }"
-                          @click="step2Data.bigFive.value = opt; step2Data.bigFive.editing = false"
-                        >
-                          <span class="edit-opt-name">{{ getBigFiveName(opt) }}</span>
-                          <span class="edit-opt-desc">{{ getBigFiveShortDesc(opt) }}</span>
-                        </button>
-                      </div>
+                <div class="card-detail">
+                  <div class="current-value">
+                    <span class="value-label">AI推测：</span>
+                    <span class="value-name">{{ getBigFiveName(step2Data.bigFive.value) }}</span>
+                  </div>
+                  <div class="option-desc">{{ getBigFiveDesc(step2Data.bigFive.value) }}</div>
+                  <div class="option-reason">💡 {{ getBigFiveReason(step2Data.bigFive.value) }}</div>
+                  <div class="option-actions">
+                    <button class="mini-btn" @click="step2Data.bigFive.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
+                    <button class="mini-btn outline" @click="step2Data.bigFive.editing = true">✗ {{ $t('cultivation.modify') }}</button>
+                  </div>
+                  <div v-if="step2Data.bigFive.editing" class="edit-area">
+                    <div class="edit-options">
+                      <button
+                        v-for="opt in BIG_FIVE_OPTIONS"
+                        :key="opt"
+                        class="edit-option"
+                        :class="{ selected: step2Data.bigFive.value === opt }"
+                        @click="step2Data.bigFive.value = opt; step2Data.bigFive.editing = false"
+                      >
+                        <span class="edit-opt-name">{{ getBigFiveName(opt) }}</span>
+                        <span class="edit-opt-desc">{{ getBigFiveShortDesc(opt) }}</span>
+                      </button>
                     </div>
                   </div>
-                </Transition>
+                </div>
               </div>
 
               <!-- 昼夜节律 -->
-              <div v-if="step2Data.chronotype" class="guess-card" :class="{ expanded: expandedCard === 'chronotype' }">
-                <div class="guess-card-header" @click="toggleCardExpand('chronotype')">
+              <div v-if="step2Data.chronotype" class="guess-card">
+                <div class="guess-card-header">
                   <span class="guess-card-icon">⏰</span>
                   <span class="guess-card-title">{{ $t('cultivation.chronotype') }}</span>
                   <span class="confidence-badge">{{ (step2Data.chronotype.confidence * 100).toFixed(0) }}%</span>
-                  <span class="expand-arrow">{{ expandedCard === 'chronotype' ? '▲' : '▼' }}</span>
                 </div>
-                <Transition name="expand">
-                  <div v-if="expandedCard === 'chronotype'" class="card-detail">
-                    <div class="current-value">
-                      <span class="value-label">AI推测：</span>
-                      <span class="value-name">{{ getChronotypeName(step2Data.chronotype.value) }}</span>
-                    </div>
-                    <div class="option-desc">{{ getChronotypeDesc(step2Data.chronotype.value) }}</div>
-                    <div class="option-reason">💡 {{ getChronotypeReason(step2Data.chronotype.value) }}</div>
-                    <div class="option-actions">
-                      <button class="mini-btn" @click="step2Data.chronotype.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
-                      <button class="mini-btn outline" @click="step2Data.chronotype.editing = true">✗ {{ $t('cultivation.modify') }}</button>
-                    </div>
-                    <div v-if="step2Data.chronotype.editing" class="edit-area">
-                      <div class="edit-options">
-                        <button
-                          v-for="opt in CHRONOTYPE_OPTIONS"
-                          :key="opt"
-                          class="edit-option"
-                          :class="{ selected: step2Data.chronotype.value === opt }"
-                          @click="step2Data.chronotype.value = opt; step2Data.chronotype.editing = false"
-                        >
-                          <span class="edit-opt-name">{{ getChronotypeName(opt) }}</span>
-                          <span class="edit-opt-desc">{{ getChronotypeDesc(opt).slice(0, 30) }}...</span>
-                        </button>
-                      </div>
+                <div class="card-detail">
+                  <div class="current-value">
+                    <span class="value-label">AI推测：</span>
+                    <span class="value-name">{{ getChronotypeName(step2Data.chronotype.value) }}</span>
+                  </div>
+                  <div class="option-desc">{{ getChronotypeDesc(step2Data.chronotype.value) }}</div>
+                  <div class="option-reason">💡 {{ getChronotypeReason(step2Data.chronotype.value) }}</div>
+                  <div class="option-actions">
+                    <button class="mini-btn" @click="step2Data.chronotype.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
+                    <button class="mini-btn outline" @click="step2Data.chronotype.editing = true">✗ {{ $t('cultivation.modify') }}</button>
+                  </div>
+                  <div v-if="step2Data.chronotype.editing" class="edit-area">
+                    <div class="edit-options">
+                      <button
+                        v-for="opt in CHRONOTYPE_OPTIONS"
+                        :key="opt"
+                        class="edit-option"
+                        :class="{ selected: step2Data.chronotype.value === opt }"
+                        @click="step2Data.chronotype.value = opt; step2Data.chronotype.editing = false"
+                      >
+                        <span class="edit-opt-name">{{ getChronotypeName(opt) }}</span>
+                        <span class="edit-opt-desc">{{ getChronotypeDesc(opt).slice(0, 30) }}...</span>
+                      </button>
                     </div>
                   </div>
-                </Transition>
+                </div>
               </div>
 
               <!-- 身体健康基线 -->
-              <div v-if="step2Data.healthBaseline" class="guess-card uncertain" :class="{ expanded: expandedCard === 'health' }">
-                <div class="guess-card-header" @click="toggleCardExpand('health')">
+              <div v-if="step2Data.healthBaseline" class="guess-card uncertain">
+                <div class="guess-card-header">
                   <span class="guess-card-icon">💪</span>
                   <span class="guess-card-title">{{ $t('cultivation.healthBaseline') }}</span>
                   <span class="uncertain-badge">{{ $t('cultivation.aiUncertain') }}</span>
-                  <span class="expand-arrow">{{ expandedCard === 'health' ? '▲' : '▼' }}</span>
                 </div>
-                <Transition name="expand">
-                  <div v-if="expandedCard === 'health'" class="card-detail">
-                    <div class="ai-note">{{ step2Data.healthBaseline.aiNote }}</div>
-                    <div class="current-value">
-                      <span class="value-label">AI参考：</span>
-                      <span class="value-name">{{ getHealthName(step2Data.healthBaseline.value) }}</span>
-                    </div>
-                    <div class="option-desc">{{ getHealthDesc(step2Data.healthBaseline.value) }}</div>
-                    <div class="option-reason">💡 {{ getHealthReason(step2Data.healthBaseline.value) }}</div>
-                    <div class="option-actions">
-                      <button class="mini-btn" @click="step2Data.healthBaseline.confirmed = true">{{ $t('cultivation.basicFit') }}</button>
-                      <button class="mini-btn outline" @click="step2Data.healthBaseline.editing = true">{{ $t('cultivation.someDifferent') }}</button>
-                      <button class="mini-btn ghost" @click="step2Data.healthBaseline.confirmed = 'skip'">{{ $t('cultivation.skipForNow') }}</button>
-                    </div>
-                    <div v-if="step2Data.healthBaseline.editing" class="edit-area">
-                      <div class="edit-options">
-                        <button
-                          v-for="opt in HEALTH_OPTIONS"
-                          :key="opt"
-                          class="edit-option"
-                          :class="{ selected: step2Data.healthBaseline.value === opt }"
-                          @click="step2Data.healthBaseline.value = opt; step2Data.healthBaseline.editing = false"
-                        >
-                          <span class="edit-opt-name">{{ getHealthName(opt) }}</span>
-                          <span class="edit-opt-desc">{{ getHealthDesc(opt).slice(0, 30) }}...</span>
-                        </button>
-                      </div>
+                <div class="card-detail">
+                  <div class="ai-note">{{ step2Data.healthBaseline.aiNote }}</div>
+                  <div class="current-value">
+                    <span class="value-label">AI参考：</span>
+                    <span class="value-name">{{ getHealthName(step2Data.healthBaseline.value) }}</span>
+                  </div>
+                  <div class="option-desc">{{ getHealthDesc(step2Data.healthBaseline.value) }}</div>
+                  <div class="option-reason">💡 {{ getHealthReason(step2Data.healthBaseline.value) }}</div>
+                  <div class="option-actions">
+                    <button class="mini-btn" @click="step2Data.healthBaseline.confirmed = true">{{ $t('cultivation.basicFit') }}</button>
+                    <button class="mini-btn outline" @click="step2Data.healthBaseline.editing = true">{{ $t('cultivation.someDifferent') }}</button>
+                    <button class="mini-btn ghost" @click="step2Data.healthBaseline.confirmed = 'skip'">{{ $t('cultivation.skipForNow') }}</button>
+                  </div>
+                  <div v-if="step2Data.healthBaseline.editing" class="edit-area">
+                    <div class="edit-options">
+                      <button
+                        v-for="opt in HEALTH_OPTIONS"
+                        :key="opt"
+                        class="edit-option"
+                        :class="{ selected: step2Data.healthBaseline.value === opt }"
+                        @click="step2Data.healthBaseline.value = opt; step2Data.healthBaseline.editing = false"
+                      >
+                        <span class="edit-opt-name">{{ getHealthName(opt) }}</span>
+                        <span class="edit-opt-desc">{{ getHealthDesc(opt).slice(0, 30) }}...</span>
+                      </button>
                     </div>
                   </div>
-                </Transition>
+                </div>
               </div>
 
               <!-- 心理能量水平 -->
-              <div v-if="step2Data.mentalEnergy" class="guess-card uncertain" :class="{ expanded: expandedCard === 'mental' }">
-                <div class="guess-card-header" @click="toggleCardExpand('mental')">
+              <div v-if="step2Data.mentalEnergy" class="guess-card uncertain">
+                <div class="guess-card-header">
                   <span class="guess-card-icon">🧘</span>
                   <span class="guess-card-title">{{ $t('cultivation.mentalEnergy') }}</span>
                   <span class="uncertain-badge">{{ $t('cultivation.aiUncertain') }}</span>
-                  <span class="expand-arrow">{{ expandedCard === 'mental' ? '▲' : '▼' }}</span>
                 </div>
-                <Transition name="expand">
-                  <div v-if="expandedCard === 'mental'" class="card-detail">
-                    <div class="ai-note">{{ step2Data.mentalEnergy.aiNote }}</div>
-                    <div class="current-value">
-                      <span class="value-label">AI参考：</span>
-                      <span class="value-name">{{ getMentalEnergyName(step2Data.mentalEnergy.value) }}</span>
-                    </div>
-                    <div class="option-desc">{{ getMentalEnergyDesc(step2Data.mentalEnergy.value) }}</div>
-                    <div class="option-reason">💡 {{ getMentalEnergyReason(step2Data.mentalEnergy.value) }}</div>
-                    <div class="option-actions">
-                      <button class="mini-btn" @click="step2Data.mentalEnergy.confirmed = true">{{ $t('cultivation.basicFit') }}</button>
-                      <button class="mini-btn outline" @click="step2Data.mentalEnergy.editing = true">{{ $t('cultivation.someDifferent') }}</button>
-                      <button class="mini-btn ghost" @click="step2Data.mentalEnergy.confirmed = 'skip'">{{ $t('cultivation.skipForNow') }}</button>
-                    </div>
-                    <div v-if="step2Data.mentalEnergy.editing" class="edit-area">
-                      <div class="edit-options">
-                        <button
-                          v-for="opt in MENTAL_ENERGY_OPTIONS"
-                          :key="opt"
-                          class="edit-option"
-                          :class="{ selected: step2Data.mentalEnergy.value === opt }"
-                          @click="step2Data.mentalEnergy.value = opt; step2Data.mentalEnergy.editing = false"
-                        >
-                          <span class="edit-opt-name">{{ getMentalEnergyName(opt) }}</span>
-                          <span class="edit-opt-desc">{{ getMentalEnergyDesc(opt).slice(0, 30) }}...</span>
-                        </button>
-                      </div>
+                <div class="card-detail">
+                  <div class="ai-note">{{ step2Data.mentalEnergy.aiNote }}</div>
+                  <div class="current-value">
+                    <span class="value-label">AI参考：</span>
+                    <span class="value-name">{{ getMentalEnergyName(step2Data.mentalEnergy.value) }}</span>
+                  </div>
+                  <div class="option-desc">{{ getMentalEnergyDesc(step2Data.mentalEnergy.value) }}</div>
+                  <div class="option-reason">💡 {{ getMentalEnergyReason(step2Data.mentalEnergy.value) }}</div>
+                  <div class="option-actions">
+                    <button class="mini-btn" @click="step2Data.mentalEnergy.confirmed = true">{{ $t('cultivation.basicFit') }}</button>
+                    <button class="mini-btn outline" @click="step2Data.mentalEnergy.editing = true">{{ $t('cultivation.someDifferent') }}</button>
+                    <button class="mini-btn ghost" @click="step2Data.mentalEnergy.confirmed = 'skip'">{{ $t('cultivation.skipForNow') }}</button>
+                  </div>
+                  <div v-if="step2Data.mentalEnergy.editing" class="edit-area">
+                    <div class="edit-options">
+                      <button
+                        v-for="opt in MENTAL_ENERGY_OPTIONS"
+                        :key="opt"
+                        class="edit-option"
+                        :class="{ selected: step2Data.mentalEnergy.value === opt }"
+                        @click="step2Data.mentalEnergy.value = opt; step2Data.mentalEnergy.editing = false"
+                      >
+                        <span class="edit-opt-name">{{ getMentalEnergyName(opt) }}</span>
+                        <span class="edit-opt-desc">{{ getMentalEnergyDesc(opt).slice(0, 30) }}...</span>
+                      </button>
                     </div>
                   </div>
-                </Transition>
+                </div>
               </div>
 
               <!-- 决策风格 -->
-              <div v-if="step2Data.decisionStyle" class="guess-card" :class="{ expanded: expandedCard === 'decision' }">
-                <div class="guess-card-header" @click="toggleCardExpand('decision')">
+              <div v-if="step2Data.decisionStyle" class="guess-card">
+                <div class="guess-card-header">
                   <span class="guess-card-icon">⚡</span>
                   <span class="guess-card-title">{{ $t('cultivation.decisionStyle') }}</span>
                   <span class="confidence-badge">{{ (step2Data.decisionStyle.confidence * 100).toFixed(0) }}%</span>
-                  <span class="expand-arrow">{{ expandedCard === 'decision' ? '▲' : '▼' }}</span>
                 </div>
-                <Transition name="expand">
-                  <div v-if="expandedCard === 'decision'" class="card-detail">
-                    <div class="current-value">
-                      <span class="value-label">AI推测：</span>
-                      <span class="value-name">{{ getDecisionName(step2Data.decisionStyle.value) }}</span>
-                    </div>
-                    <div class="option-desc">{{ getDecisionDesc(step2Data.decisionStyle.value) }}</div>
-                    <div class="option-reason">💡 {{ getDecisionReason(step2Data.decisionStyle.value) }}</div>
-                    <div class="option-actions">
-                      <button class="mini-btn" @click="step2Data.decisionStyle.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
-                      <button class="mini-btn outline" @click="step2Data.decisionStyle.editing = true">✗ {{ $t('cultivation.modify') }}</button>
-                    </div>
-                    <div v-if="step2Data.decisionStyle.editing" class="edit-area">
-                      <div class="edit-options">
-                        <button
-                          v-for="opt in DECISION_STYLE_OPTIONS"
-                          :key="opt"
-                          class="edit-option"
-                          :class="{ selected: step2Data.decisionStyle.value === opt }"
-                          @click="step2Data.decisionStyle.value = opt; step2Data.decisionStyle.editing = false"
-                        >
-                          <span class="edit-opt-name">{{ getDecisionName(opt) }}</span>
-                          <span class="edit-opt-desc">{{ getDecisionDesc(opt).slice(0, 30) }}...</span>
-                        </button>
-                      </div>
+                <div class="card-detail">
+                  <div class="current-value">
+                    <span class="value-label">AI推测：</span>
+                    <span class="value-name">{{ getDecisionName(step2Data.decisionStyle.value) }}</span>
+                  </div>
+                  <div class="option-desc">{{ getDecisionDesc(step2Data.decisionStyle.value) }}</div>
+                  <div class="option-reason">💡 {{ getDecisionReason(step2Data.decisionStyle.value) }}</div>
+                  <div class="option-actions">
+                    <button class="mini-btn" @click="step2Data.decisionStyle.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
+                    <button class="mini-btn outline" @click="step2Data.decisionStyle.editing = true">✗ {{ $t('cultivation.modify') }}</button>
+                  </div>
+                  <div v-if="step2Data.decisionStyle.editing" class="edit-area">
+                    <div class="edit-options">
+                      <button
+                        v-for="opt in DECISION_STYLE_OPTIONS"
+                        :key="opt"
+                        class="edit-option"
+                        :class="{ selected: step2Data.decisionStyle.value === opt }"
+                        @click="step2Data.decisionStyle.value = opt; step2Data.decisionStyle.editing = false"
+                      >
+                        <span class="edit-opt-name">{{ getDecisionName(opt) }}</span>
+                        <span class="edit-opt-desc">{{ getDecisionDesc(opt).slice(0, 30) }}...</span>
+                      </button>
                     </div>
                   </div>
-                </Transition>
+                </div>
               </div>
 
               <!-- 人际互动模式 -->
-              <div v-if="step2Data.interactionPattern" class="guess-card" :class="{ expanded: expandedCard === 'interaction' }">
-                <div class="guess-card-header" @click="toggleCardExpand('interaction')">
+              <div v-if="step2Data.interactionPattern" class="guess-card">
+                <div class="guess-card-header">
                   <span class="guess-card-icon">🤝</span>
                   <span class="guess-card-title">{{ $t('cultivation.interactionPattern') }}</span>
                   <span class="confidence-badge">{{ (step2Data.interactionPattern.confidence * 100).toFixed(0) }}%</span>
-                  <span class="expand-arrow">{{ expandedCard === 'interaction' ? '▲' : '▼' }}</span>
                 </div>
-                <Transition name="expand">
-                  <div v-if="expandedCard === 'interaction'" class="card-detail">
-                    <div class="current-value">
-                      <span class="value-label">AI推测：</span>
-                      <span class="value-name">{{ getInteractionName(step2Data.interactionPattern.value) }}</span>
-                    </div>
-                    <div class="option-desc">{{ getInteractionDesc(step2Data.interactionPattern.value) }}</div>
-                    <div class="option-reason">💡 {{ getInteractionReason(step2Data.interactionPattern.value) }}</div>
-                    <div class="option-actions">
-                      <button class="mini-btn" @click="step2Data.interactionPattern.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
-                      <button class="mini-btn outline" @click="step2Data.interactionPattern.editing = true">✗ {{ $t('cultivation.modify') }}</button>
-                    </div>
-                    <div v-if="step2Data.interactionPattern.editing" class="edit-area">
-                      <div class="edit-options">
-                        <button
-                          v-for="opt in INTERACTION_OPTIONS"
-                          :key="opt"
-                          class="edit-option"
-                          :class="{ selected: step2Data.interactionPattern.value === opt }"
-                          @click="step2Data.interactionPattern.value = opt; step2Data.interactionPattern.editing = false"
-                        >
-                          <span class="edit-opt-name">{{ getInteractionName(opt) }}</span>
-                          <span class="edit-opt-desc">{{ getInteractionDesc(opt).slice(0, 30) }}...</span>
-                        </button>
-                      </div>
+                <div class="card-detail">
+                  <div class="current-value">
+                    <span class="value-label">AI推测：</span>
+                    <span class="value-name">{{ getInteractionName(step2Data.interactionPattern.value) }}</span>
+                  </div>
+                  <div class="option-desc">{{ getInteractionDesc(step2Data.interactionPattern.value) }}</div>
+                  <div class="option-reason">💡 {{ getInteractionReason(step2Data.interactionPattern.value) }}</div>
+                  <div class="option-actions">
+                    <button class="mini-btn" @click="step2Data.interactionPattern.confirmed = true">✓ {{ $t('cultivation.confirm') }}</button>
+                    <button class="mini-btn outline" @click="step2Data.interactionPattern.editing = true">✗ {{ $t('cultivation.modify') }}</button>
+                  </div>
+                  <div v-if="step2Data.interactionPattern.editing" class="edit-area">
+                    <div class="edit-options">
+                      <button
+                        v-for="opt in INTERACTION_OPTIONS"
+                        :key="opt"
+                        class="edit-option"
+                        :class="{ selected: step2Data.interactionPattern.value === opt }"
+                        @click="step2Data.interactionPattern.value = opt; step2Data.interactionPattern.editing = false"
+                      >
+                        <span class="edit-opt-name">{{ getInteractionName(opt) }}</span>
+                        <span class="edit-opt-desc">{{ getInteractionDesc(opt).slice(0, 30) }}...</span>
+                      </button>
                     </div>
                   </div>
-                </Transition>
+                </div>
               </div>
             </div>
 
@@ -720,12 +689,8 @@ const getInteractionDesc = (val) => PSYCHOLOGY_KNOWLEDGE_BASE.interactionPattern
 const getInteractionReason = (val) => _fillTemplate(PSYCHOLOGY_KNOWLEDGE_BASE.interactionPattern[val]?.aiReasonTemplate)
 
 // 展开/收拢状态
-const expandedMbti = ref(null)
-const expandedCard = ref(null)
 const expandedItem = ref(null)
 
-const toggleMbtiExpand = (type) => { expandedMbti.value = expandedMbti.value === type ? null : type }
-const toggleCardExpand = (card) => { expandedCard.value = expandedCard.value === card ? null : card }
 const toggleItemExpand = (id) => { expandedItem.value = expandedItem.value === id ? null : id }
 
 // 计算年龄
