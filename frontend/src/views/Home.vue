@@ -102,47 +102,37 @@
             </div>
           </div>
           
-          <!-- 工作流步骤 (压缩显示) -->
-          <div class="workflow-steps-compact">
-            <div class="workflow-list">
-              <div class="workflow-item">
-                <span class="step-num">01</span>
-                <div class="step-info">
-                  <div class="step-title">{{ $t('home.step01Title') }}</div>
-                  <div class="step-desc">{{ $t('home.step01Desc') }}</div>
-                </div>
-              </div>
-              <div class="workflow-item">
-                <span class="step-num">02</span>
-                <div class="step-info">
-                  <div class="step-title">{{ $t('home.step02Title') }}</div>
-                  <div class="step-desc">{{ $t('home.step02Desc') }}</div>
-                </div>
-              </div>
-              <div class="workflow-item">
-                <span class="step-num">03</span>
-                <div class="step-info">
-                  <div class="step-title">{{ $t('home.step03Title') }}</div>
-                  <div class="step-desc">{{ $t('home.step03Desc') }}</div>
-                </div>
-              </div>
-              <div class="workflow-item">
-                <span class="step-num">04</span>
-                <div class="step-info">
-                  <div class="step-title">{{ $t('home.step04Title') }}</div>
-                  <div class="step-desc">{{ $t('home.step04Desc') }}</div>
-                </div>
-              </div>
-              <div class="workflow-item">
-                <span class="step-num">05</span>
-                <div class="step-info">
-                  <div class="step-title">{{ $t('home.step05Title') }}</div>
-                  <div class="step-desc">{{ $t('home.step05Desc') }}</div>
-                </div>
-              </div>
+          <!-- 多层级决策分析卡片 -->
+          <div class="decision-cards">
+            <div class="decision-card" :class="{ active: selectedCard === 'cultivation' }" @click="openCultivation">
+              <div class="card-icon">🧘</div>
+              <div class="card-title">{{ $t('home.cultivation') }}</div>
+              <div class="card-desc">{{ $t('home.cultivationDesc') }}</div>
+              <div class="card-tag">{{ $t('home.cultivationTag') }}</div>
+            </div>
+            <div class="decision-card placeholder" :class="{ active: selectedCard === 'family' }">
+              <div class="card-icon">🏠</div>
+              <div class="card-title">{{ $t('home.family') }}</div>
+              <div class="card-desc">{{ $t('home.familyDesc') }}</div>
+              <div class="card-tag">{{ $t('home.comingSoon') }}</div>
+            </div>
+            <div class="decision-card placeholder" :class="{ active: selectedCard === 'governance' }">
+              <div class="card-icon">🏛️</div>
+              <div class="card-title">{{ $t('home.governance') }}</div>
+              <div class="card-desc">{{ $t('home.governanceDesc') }}</div>
+              <div class="card-tag">{{ $t('home.comingSoon') }}</div>
             </div>
           </div>
         </div>
+
+        <!-- 修身覆盖层 -->
+        <CultivationPanel
+          :visible="showCultivation"
+          :reality-seed-files="files"
+          @close="showCultivation = false; selectedCard = null"
+          @back="showCultivation = false; selectedCard = null"
+          @complete="handleCultivationComplete"
+        />
 
         <!-- 右栏：交互控制台 -->
         <div class="right-panel">
@@ -291,8 +281,26 @@ import { useRouter } from 'vue-router'
 import { updateConfig, analyzeIntent, generateExperts } from '../api/simulation'
 import HistoryDatabase from '../components/HistoryDatabase.vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
+import CultivationPanel from '../components/CultivationPanel.vue'
 
 const router = useRouter()
+
+// 修身面板状态
+const showCultivation = ref(false)
+const selectedCard = ref(null)
+
+const openCultivation = () => {
+  selectedCard.value = 'cultivation'
+  showCultivation.value = true
+}
+
+const handleCultivationComplete = ({ markdown, fileName }) => {
+  const blob = new Blob([markdown], { type: 'text/markdown' })
+  const file = new File([blob], fileName, { type: 'text/markdown' })
+  addFiles([file])
+  showCultivation.value = false
+  selectedCard.value = null
+}
 
 // 表单数据
 const formData = ref({
@@ -1124,80 +1132,85 @@ const startSimulation = () => {
   cursor: not-allowed;
 }
 
-/* 工作流步骤 (压缩显示) */
-.workflow-steps-compact {
-  margin-top: 10px;
-  font-size: 0.82rem;
-}
-.workflow-steps-compact .workflow-item {
-  gap: 14px;
-  margin-bottom: 10px;
-}
-.workflow-steps-compact .step-num {
-  font-size: 0.75rem;
-  opacity: 0.2;
-}
-.workflow-steps-compact .step-title {
-  font-size: 0.85rem;
-}
-.workflow-steps-compact .step-desc {
-  font-size: 0.75rem;
+/* 多层级决策分析卡片 */
+.decision-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
 }
 
-/* 项目模拟步骤介绍 */
-.steps-container {
-  border: 1px solid var(--border);
-  padding: 30px;
+.decision-card {
+  border: 1px solid var(--border, #E5E5E5);
+  border-radius: 10px;
+  padding: 24px 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
   position: relative;
-}
-
-.steps-header {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: #999;
-  margin-bottom: 25px;
+  background: #FAFAFA;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  text-align: center;
+  gap: 10px;
 }
 
-.diamond-icon {
-  font-size: 1.2rem;
+.decision-card:hover {
+  border-color: var(--orange, #FF4500);
+  background: #FFF;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.decision-card.active {
+  border-color: var(--orange, #FF4500);
+  background: #FFF;
+  box-shadow: 0 0 0 2px rgba(255, 69, 0, 0.15);
+}
+
+.decision-card.placeholder {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.decision-card.placeholder:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border, #E5E5E5);
+  background: #FAFAFA;
+}
+
+.card-icon {
+  font-size: 2rem;
   line-height: 1;
 }
 
-.workflow-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.workflow-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-}
-
-.step-num {
-  font-family: var(--font-mono);
+.card-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.95rem;
   font-weight: 700;
-  color: var(--black);
-  opacity: 0.3;
+  letter-spacing: 0.5px;
 }
 
-.step-info {
-  flex: 1;
+.card-desc {
+  font-size: 0.78rem;
+  color: #999;
+  line-height: 1.5;
 }
 
-.step-title {
-  font-weight: 520;
-  font-size: 1rem;
-  margin-bottom: 4px;
+.card-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  color: var(--orange, #FF4500);
+  background: rgba(255, 69, 0, 0.08);
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin-top: 4px;
 }
 
-.step-desc {
-  font-size: 0.85rem;
-  color: var(--gray-text);
+.decision-card.placeholder .card-tag {
+  color: #999;
+  background: #EEE;
 }
 
 /* 右侧交互控制台 */

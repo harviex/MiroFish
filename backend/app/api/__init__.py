@@ -8,9 +8,11 @@ graph_bp = Blueprint('graph', __name__)
 simulation_bp = Blueprint('simulation', __name__)
 report_bp = Blueprint('report', __name__)
 expert_bp = Blueprint('expert', __name__)
+cultivation_bp = Blueprint('cultivation', __name__)
 
 from . import graph  # noqa: E402, F401
 from . import simulation  # noqa: E402, F401
 from . import report  # noqa: E402, F401
 from . import expert  # noqa: E402, F401
+from . import cultivation  # noqa: E402, F401
 
