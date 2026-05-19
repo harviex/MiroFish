@@ -158,6 +158,7 @@ def guess_step3():
         step2 = data.get('step2', {})
 
         birth_date = step1.get('birthDate', '')
+        birthplace = step1.get('birthplace', '')
         zodiac = step1.get('zodiac', get_zodiac(birth_date))
         age = get_age(birth_date)
         blood_type = step1.get('bloodType', '')
@@ -187,7 +188,7 @@ AI初步推测：
 - 决策风格：{decision_style}
 - 人际互动：{interaction_pattern}
 
-请严格按以下 JSON 格式返回推测结果。每个项目必须包含 label（标签）、value（推测值）、confidence（置信度0.1-0.9）、options（可选值数组，3-6个选项）。
+请严格按以下 JSON 格式返回推测结果。每个项目必须包含 label（标签）、value（推测值）、confidence（置信度0.1-0.9）、options（可选值数组，3-6个选项）、reason（推理依据，50-150字，需具体说明基于用户的哪些信息推测出该值，例如"基于你的职业为软件工程师、本科学历、O型血和双子座特质，推测..."）。
 
 {{
   "categories": [
@@ -196,16 +197,16 @@ AI初步推测：
       "name": "生命根基",
       "icon": "🌱",
       "items": [
-        {{"id": "family-structure", "label": "原生家庭结构", "value": "...", "confidence": 0.X, "options": ["选项1", "选项2", "选项3"]}},
-        {{"id": "family-economy", "label": "家庭经济状况", "value": "...", "confidence": 0.X, "options": ["选项1", "选项2", "选项3", "选项4"]}},
-        {{"id": "family-education", "label": "家庭教育风格", "value": "...", "confidence": 0.X, "options": ["专制型", "民主型", "放任型", "忽视型"]}},
-        {{"id": "family-culture", "label": "家族文化传承", "value": "...", "confidence": 0.X, "options": ["重视教育", "重视经商", "重视手艺", "无明显传承"]}},
-        {{"id": "family-events", "label": "重要家庭变故", "value": "...", "confidence": 0.X, "options": ["父母离异", "亲人去世", "家庭搬迁", "移民", "无明显变故"]}},
-        {{"id": "growth-region", "label": "成长地域轨迹", "value": "...", "confidence": 0.X, "options": ["农村成长", "小城镇", "城市成长", "多地迁徙"]}},
-        {{"id": "education-path", "label": "教育塑造历程", "value": "...", "confidence": 0.X, "options": ["初中", "高中", "大专", "本科", "硕士", "博士"]}},
-        {{"id": "early-events", "label": "早期重大事件", "value": "...", "confidence": 0.X, "options": ["无显著事件", "童年创伤", "关键转折", "荣誉成就", "失去经历"]}},
-        {{"id": "generational", "label": "代际传承印记", "value": "...", "confidence": 0.X, "options": ["家族职业传承", "家风家训", "代际创伤", "资源继承", "无明显传承"]}},
-        {{"id": "cultural-adapt", "label": "文化适应经历", "value": "...", "confidence": 0.X, "options": ["无显著适应", "城乡文化适应", "地域文化适应", "跨文化适应"]}}
+        {{"id": "family-structure", "label": "原生家庭结构", "value": "...", "confidence": 0.X, "options": ["选项1", "选项2", "选项3"], "reason": "基于用户的职业为{occupation}、学历为{education}，推测其成长环境可能为..."}},
+        {{"id": "family-economy", "label": "家庭经济状况", "value": "...", "confidence": 0.X, "options": ["选项1", "选项2", "选项3", "选项4"], "reason": "基于用户的职业为{occupation}、收入范围为{income_range}，推测其原生家庭经济状况可能为..."}},
+        {{"id": "family-education", "label": "家庭教育风格", "value": "...", "confidence": 0.X, "options": ["专制型", "民主型", "放任型", "忽视型"], "reason": "基于用户的{zodiac}星座特质和{education}学历，推测其家庭教育风格可能为..."}},
+        {{"id": "family-culture", "label": "家族文化传承", "value": "...", "confidence": 0.X, "options": ["重视教育", "重视经商", "重视手艺", "无明显传承"], "reason": "基于用户{education}学历和{occupation}职业选择，推测其家族文化传承可能为..."}},
+        {{"id": "family-events", "label": "重要家庭变故", "value": "...", "confidence": 0.X, "options": ["父母离异", "亲人去世", "家庭搬迁", "移民", "无明显变故"], "reason": "基于用户的{age}岁年龄、{marital_status}婚姻状态和{occupation}职业稳定性，推测其家庭变故情况可能为..."}},
+        {{"id": "growth-region", "label": "成长地域轨迹", "value": "...", "confidence": 0.X, "options": ["农村成长", "小城镇", "城市成长", "多地迁徙"], "reason": "基于用户出生地为{birthplace}、{occupation}职业聚集城市和{education}学历获取路径，推测其成长地域轨迹可能为..."}},
+        {{"id": "education-path", "label": "教育塑造历程", "value": "...", "confidence": 0.X, "options": ["初中", "高中", "大专", "本科", "硕士", "博士"], "reason": "基于用户当前学历为{education}、职业为{occupation}，推测其实际受教育程度可能为..."}},
+        {{"id": "early-events", "label": "早期重大事件", "value": "...", "confidence": 0.X, "options": ["无显著事件", "童年创伤", "关键转折", "荣誉成就", "失去经历"], "reason": "基于用户的{blood_type}血型性格倾向、{zodiac}星座特质和{gender}性别社会经历，推测其早期重大事件可能为..."}},
+        {{"id": "generational", "label": "代际传承印记", "value": "...", "confidence": 0.X, "options": ["家族职业传承", "家风家训", "代际创伤", "资源继承", "无明显传承"], "reason": "基于用户{occupation}职业与{education}学历路径、{income_range}收入水平，推测其代际传承印记可能为..."}},
+        {{"id": "cultural-adapt", "label": "文化适应经历", "value": "...", "confidence": 0.X, "options": ["无显著适应", "城乡文化适应", "地域文化适应", "跨文化适应"], "reason": "基于用户出生地为{birthplace}、当前职业城市环境和{education}学历获取轨迹，推测其文化适应经历可能为..."}}
       ]
     }},
     {{

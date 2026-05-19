@@ -471,13 +471,13 @@
                         v-for="(item, itemIdx) in cat.items"
                         :key="item.id"
                         class="item-row"
-                        :class="{ checked: item.checked, unchecked: !item.checked, editing: item.editing, expanded: expandedItem === item.id }"
+                        :class="{ checked: item.checked, unchecked: !item.checked, editing: item.editing }"
                         :style="{ animationDelay: (itemIdx * 30) + 'ms' }"
                       >
                         <label class="item-check">
                           <input type="checkbox" v-model="item.checked" />
                         </label>
-                        <div class="item-content" @click="toggleItemExpand(item.id)">
+                        <div class="item-content">
                           <div class="item-label">{{ item.label }}</div>
                           <div class="item-value" v-if="!item.editing">
                             {{ item.value }}
@@ -485,7 +485,7 @@
                               <span v-for="n in 5" :key="n" class="dot" :class="{ active: n <= Math.round(item.confidence * 5) }"></span>
                             </span>
                           </div>
-                          <div class="item-edit" v-else @click.stop>
+                          <div class="item-edit" v-else>
                             <div v-if="item.options && item.options.length" class="edit-options-vertical">
                               <button
                                 v-for="opt in item.options"
@@ -499,11 +499,11 @@
                             </div>
                             <input v-else type="text" v-model="item.value" class="field-input item-input" />
                           </div>
-                          <Transition name="expand">
-                            <div v-if="expandedItem === item.id && !item.editing" class="item-reason">
-                              <div class="reason-text">💡 {{ item.reason || 'AI基于你的整体信息推测此选项' }}</div>
-                            </div>
-                          </Transition>
+                          <!-- 推理依据 + 描述（始终展开） -->
+                          <div class="item-reason">
+                            <div class="reason-text">💡 {{ item.reason || 'AI基于你的整体信息推测此选项' }}</div>
+                            <div class="reason-desc" v-if="getItemDesc(item)">{{ getItemDesc(item) }}</div>
+                          </div>
                         </div>
                         <div class="item-actions" v-if="!item.editing">
                           <button class="icon-btn confirm" @click.stop="item.checked = true" :title="$t('cultivation.confirm')">✓</button>
@@ -556,7 +556,7 @@
 
 <script setup>
 import { ref, computed, watch, reactive } from 'vue'
-import PSYCHOLOGY_KNOWLEDGE_BASE from '../data/psychologyKnowledgeBase.js'
+import PSYCHOLOGY_KNOWLEDGE_BASE, { STEP3_ITEM_KB } from '../data/psychologyKnowledgeBase.js'
 import { guessStep2, guessStep3 } from '../api/cultivation'
 
 const props = defineProps({
@@ -692,6 +692,18 @@ const getInteractionReason = (val) => _fillTemplate(PSYCHOLOGY_KNOWLEDGE_BASE.in
 const expandedItem = ref(null)
 
 const toggleItemExpand = (id) => { expandedItem.value = expandedItem.value === id ? null : id }
+
+// 获取 Step 3 子项的描述（根据 item.id 和当前 value 查找知识库）
+const getItemDesc = (item) => {
+  const kb = STEP3_ITEM_KB[item.id]
+  if (!kb) return ''
+  // 优先从 options 中查找当前 value 的描述
+  if (kb.options && kb.options[item.value]) {
+    return kb.options[item.value]
+  }
+  // 如果没有选项描述，返回总体描述
+  return kb.desc || ''
+}
 
 // 计算年龄
 const age = computed(() => {
@@ -910,76 +922,76 @@ const buildDefaultCategories = () => {
     {
       id: 'life-foundation', name: '生命根基', icon: '🌱', expanded: false,
       items: [
-        { id: 'family-structure', label: '原生家庭结构', value: '双亲家庭', confidence: 0.7, checked: true, options: ['单亲家庭','双亲家庭','隔代抚养','重组家庭','其他'], editing: false },
-        { id: 'family-economy', label: '家庭经济状况', value: '工薪阶层', confidence: 0.6, checked: true, options: ['贫困','工薪阶层','中产','富裕'], editing: false },
-        { id: 'family-education', label: '家庭教育风格', value: '民主型', confidence: 0.5, checked: true, options: ['专制型','民主型','放任型','忽视型'], editing: false },
-        { id: 'family-culture', label: '家族文化传承', value: '重视教育', confidence: 0.5, checked: true, options: ['重视教育','重视经商','重视手艺','无明显传承'], editing: false },
-        { id: 'family-events', label: '重要家庭变故', value: '无明显变故', confidence: 0.4, checked: true, options: ['父母离异','亲人去世','家庭搬迁','移民','无明显变故'], editing: false },
-        { id: 'growth-region', label: '成长地域轨迹', value: '城市成长', confidence: 0.6, checked: true, options: ['农村成长','小城镇','城市成长','多地迁徙'], editing: false },
-        { id: 'education-path', label: '教育塑造历程', value: '本科', confidence: 0.8, checked: true, options: ['初中','高中','大专','本科','硕士','博士'], editing: false },
-        { id: 'early-events', label: '早期重大事件', value: '无明显事件', confidence: 0.3, checked: true, options: [], editing: false },
-        { id: 'generational', label: '代际传承印记', value: '无明显传承', confidence: 0.3, checked: true, options: [], editing: false },
-        { id: 'cultural-adapt', label: '文化适应经历', value: '无显著适应', confidence: 0.4, checked: true, options: [], editing: false }
+        { id: 'family-structure', label: '原生家庭结构', value: '双亲家庭', confidence: 0.7, checked: true, options: ['单亲家庭','双亲家庭','隔代抚养','重组家庭','其他'], editing: false, reason: `基于你的职业为${form.occupation || '未知'}、学历为${form.education || '未知'}，推测你的原生家庭结构可能为双亲家庭。` },
+        { id: 'family-economy', label: '家庭经济状况', value: '工薪阶层', confidence: 0.6, checked: true, options: ['贫困','工薪阶层','中产','富裕'], editing: false, reason: `基于你的职业为${form.occupation || '未知'}、收入范围为${form.incomeRange || '未知'}，推测你的原生家庭经济状况可能为工薪阶层。` },
+        { id: 'family-education', label: '家庭教育风格', value: '民主型', confidence: 0.5, checked: true, options: ['专制型','民主型','放任型','忽视型'], editing: false, reason: `基于你的${derived.value.zodiac || '未知'}星座特质和${form.education || '未知'}学历，推测你的家庭教育风格可能为民主型。` },
+        { id: 'family-culture', label: '家族文化传承', value: '重视教育', confidence: 0.5, checked: true, options: ['重视教育','重视经商','重视手艺','无明显传承'], editing: false, reason: `基于你${form.education || '未知'}学历和${form.occupation || '未知'}职业选择，推测你的家族文化传承可能为重视教育。` },
+        { id: 'family-events', label: '重要家庭变故', value: '无明显变故', confidence: 0.4, checked: true, options: ['父母离异','亲人去世','家庭搬迁','移民','无明显变故'], editing: false, reason: `基于你的${age.value || 0}岁年龄、${form.maritalStatus || '未知'}婚姻状态，推测你的成长过程中没有经历重大的家庭变故。` },
+        { id: 'growth-region', label: '成长地域轨迹', value: '城市成长', confidence: 0.6, checked: true, options: ['农村成长','小城镇','城市成长','多地迁徙'], editing: false, reason: `基于你出生地为${form.birthplace || '未知'}、${form.occupation || '未知'}职业聚集城市，推测你的成长地域轨迹可能为城市成长。` },
+        { id: 'education-path', label: '教育塑造历程', value: '本科', confidence: 0.8, checked: true, options: ['初中','高中','大专','本科','硕士','博士'], editing: false, reason: `基于你当前学历为${form.education || '未知'}、职业为${form.occupation || '未知'}，推测你的实际受教育程度可能为本科。` },
+        { id: 'early-events', label: '早期重大事件', value: '无明显事件', confidence: 0.3, checked: true, options: [], editing: false, reason: `基于你的${form.bloodType || '未知'}血型性格倾向、${derived.value.zodiac || '未知'}星座特质，推测你的成长过程比较平稳。` },
+        { id: 'generational', label: '代际传承印记', value: '无明显传承', confidence: 0.3, checked: true, options: [], editing: false, reason: `基于你${form.occupation || '未知'}职业与${form.education || '未知'}学历路径，推测你没有明显的代际传承印记。` },
+        { id: 'cultural-adapt', label: '文化适应经历', value: '无显著适应', confidence: 0.4, checked: true, options: [], editing: false, reason: `基于你出生地为${form.birthplace || '未知'}、当前职业城市环境，推测你没有经历显著的文化适应。` }
       ]
     },
     {
       id: 'social-existence', name: '社会存在', icon: '🏛️', expanded: false,
       items: [
-        { id: 'career-identity', label: '职业身份定位', value: form.occupation || '专业人士', confidence: 0.8, checked: true, options: [], editing: false },
-        { id: 'economic-resource', label: '经济资源状况', value: form.incomeRange || '中等收入', confidence: 0.7, checked: true, options: [], editing: false },
-        { id: 'social-network', label: '社会关系网络', value: '中等规模', confidence: 0.4, checked: true, options: ['广泛','中等规模','较小','极小'], editing: false },
-        { id: 'class-perception', label: '社会阶层感知', value: '中产', confidence: 0.5, checked: true, options: ['底层','工薪','中产','上层'], editing: false },
-        { id: 'public-participation', label: '公共参与程度', value: '低', confidence: 0.4, checked: true, options: ['高','中','低','无'], editing: false },
-        { id: 'career-satisfaction', label: '职业满意度', value: '中等', confidence: 0.4, checked: true, options: ['非常满意','比较满意','中等','不太满意','很不满意'], editing: false },
-        { id: 'career-relations', label: '职业人际关系', value: '良好', confidence: 0.5, checked: true, options: ['非常紧张','有些紧张','一般','良好','非常好'], editing: false },
-        { id: 'career-plan', label: '职业发展规划', value: '稳步发展', confidence: 0.4, checked: true, options: ['晋升','转行','创业','维持现状','不确定'], editing: false },
-        { id: 'social-support', label: '社会支持度', value: '中等', confidence: 0.4, checked: true, options: ['强','中等','弱'], editing: false },
-        { id: 'class-mobility', label: '阶层流动经历', value: '向上流动', confidence: 0.4, checked: true, options: ['向上流动','向下流动','稳定','波动'], editing: false }
+        { id: 'career-identity', label: '职业身份定位', value: form.occupation || '专业人士', confidence: 0.8, checked: true, options: [], editing: false, reason: `基于你的职业为${form.occupation || '未知'}，推测你的职业身份定位为${form.occupation || '专业人士'}。` },
+        { id: 'economic-resource', label: '经济资源状况', value: form.incomeRange || '中等收入', confidence: 0.7, checked: true, options: [], editing: false, reason: `基于你的收入范围为${form.incomeRange || '未知'}，推测你的经济资源状况为${form.incomeRange || '中等收入'}。` },
+        { id: 'social-network', label: '社会关系网络', value: '中等规模', confidence: 0.4, checked: true, options: ['广泛','中等规模','较小','极小'], editing: false, reason: `基于你的职业为${form.occupation || '未知'}、${form.maritalStatus || '未知'}婚姻状态，推测你的社会关系网络规模为中等。` },
+        { id: 'class-perception', label: '社会阶层感知', value: '中产', confidence: 0.5, checked: true, options: ['底层','工薪','中产','上层'], editing: false, reason: `基于你的收入范围为${form.incomeRange || '未知'}、学历为${form.education || '未知'}，推测你对自己的社会阶层感知为中产。` },
+        { id: 'public-participation', label: '公共参与程度', value: '低', confidence: 0.4, checked: true, options: ['高','中','低','无'], editing: false, reason: `基于你的职业为${form.occupation || '未知'}，推测你的公共参与程度较低。` },
+        { id: 'career-satisfaction', label: '职业满意度', value: '中等', confidence: 0.4, checked: true, options: ['非常满意','比较满意','中等','不太满意','很不满意'], editing: false, reason: `基于你的职业为${form.occupation || '未知'}、收入范围为${form.incomeRange || '未知'}，推测你对当前职业的满意度为中等。` },
+        { id: 'career-relations', label: '职业人际关系', value: '良好', confidence: 0.5, checked: true, options: ['非常紧张','有些紧张','一般','良好','非常好'], editing: false, reason: `基于你的MBTI类型为${step2Data.mbti?.options?.[0]?.type || '未知'}，推测你在工作中的人际关系良好。` },
+        { id: 'career-plan', label: '职业发展规划', value: '稳步发展', confidence: 0.4, checked: true, options: ['晋升','转行','创业','维持现状','不确定'], editing: false, reason: `基于你的职业为${form.occupation || '未知'}、${age.value || 0}岁年龄，推测你的职业发展规划为稳步发展。` },
+        { id: 'social-support', label: '社会支持度', value: '中等', confidence: 0.4, checked: true, options: ['强','中等','弱'], editing: false, reason: `基于你的${form.maritalStatus || 'Unknown'}婚姻状态和社会关系网络，推测你的社会支持度为中等。` },
+        { id: 'class-mobility', label: '阶层流动经历', value: '向上流动', confidence: 0.4, checked: true, options: ['向上流动','向下流动','稳定','波动'], editing: false, reason: `基于你的学历为${form.education || 'Unknown'}、职业为${form.occupation || 'Unknown'}，推测你经历了向上的阶层流动。` }
       ]
     },
     {
       id: 'physical-mental', name: '身心状态', icon: '💪', expanded: false,
       items: [
-        { id: 'personality', label: '性格特质', value: step2Data.mbti?.options?.[0]?.type || 'ISTJ', confidence: 0.5, checked: true, options: MBTI_TYPES, editing: false },
-        { id: 'physical-health', label: '身体健康基线', value: '基本健康', confidence: 0.3, checked: true, options: HEALTH_OPTIONS, editing: false },
-        { id: 'mental-energy', label: '心理能量水平', value: '中等水平', confidence: 0.3, checked: true, options: MENTAL_ENERGY_OPTIONS, editing: false },
-        { id: 'energy-rhythm', label: '精力管理节律', value: '中间型', confidence: 0.4, checked: true, options: CHRONOTYPE_OPTIONS, editing: false },
-        { id: 'body-mind', label: '身心连接状态', value: '基本协调', confidence: 0.3, checked: true, options: ['非常协调','基本协调','偶尔失调','经常失调'], editing: false },
-        { id: 'emotional-stability', label: '情绪稳定性', value: '中等', confidence: 0.4, checked: true, options: ['非常稳定','比较稳定','中等','不太稳定','很不稳定'], editing: false },
-        { id: 'stress-level', label: '压力水平', value: '中等', confidence: 0.4, checked: true, options: ['无压力','轻度','中度','重度','极重度'], editing: false },
-        { id: 'resilience', label: '心理韧性', value: '中等', confidence: 0.4, checked: true, options: ['非常强','比较强','中等','比较弱','非常弱'], editing: false },
-        { id: 'sleep-quality', label: '睡眠质量', value: '一般', confidence: 0.4, checked: true, options: ['非常好','比较好','一般','比较差','非常差'], editing: false },
-        { id: 'diet-pattern', label: '饮食模式', value: '规律三餐', confidence: 0.4, checked: true, options: ['规律三餐','偶尔不规律','经常不规律','节食','暴饮暴食'], editing: false }
+        { id: 'personality', label: '性格特质', value: step2Data.mbti?.options?.[0]?.type || 'ISTJ', confidence: 0.5, checked: true, options: MBTI_TYPES, editing: false, reason: `基于Step 2 AI推测你的MBTI类型为${step2Data.mbti?.options?.[0]?.type || 'ISTJ'}，这是你当前的性格特质。` },
+        { id: 'physical-health', label: '身体健康基线', value: '基本健康', confidence: 0.3, checked: true, options: HEALTH_OPTIONS, editing: false, reason: `基于你${age.value || 0}岁的年龄特征和${form.occupation || '未知'}的工作性质，推测你的身体健康基线为基本健康。` },
+        { id: 'mental-energy', label: '心理能量水平', value: '中等水平', confidence: 0.3, checked: true, options: MENTAL_ENERGY_OPTIONS, editing: false, reason: `基于你${age.value || 0}岁的生活阶段和${form.occupation || '未知'}的工作强度，推测你的心理能量水平为中等。` },
+        { id: 'energy-rhythm', label: '精力管理节律', value: step2Data.chronotype?.value || '中间型', confidence: 0.4, checked: true, options: CHRONOTYPE_OPTIONS, editing: false, reason: `基于Step 2 AI推测你的昼夜节律为${step2Data.chronotype?.value || '中间型'}。` },
+        { id: 'body-mind', label: '身心连接状态', value: '基本协调', confidence: 0.3, checked: true, options: ['非常协调','基本协调','偶尔失调','经常失调'], editing: false, reason: `基于你的身体健康基线为基本健康，推测你的身心连接状态为基本协调。` },
+        { id: 'emotional-stability', label: '情绪稳定性', value: '中等', confidence: 0.4, checked: true, options: ['非常稳定','比较稳定','中等','不太稳定','很不稳定'], editing: false, reason: `基于你的MBTI类型为${step2Data.mbti?.options?.[0]?.type || '未知'}，推测你的情绪稳定性为中等。` },
+        { id: 'stress-level', label: '压力水平', value: '中等', confidence: 0.4, checked: true, options: ['无压力','轻度','中度','重度','极重度'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}工作性质和${form.maritalStatus || 'Unknown'}生活状态，推测你当前的压力水平为中等。` },
+        { id: 'resilience', label: '心理韧性', value: '中等', confidence: 0.4, checked: true, options: ['非常强','比较强','中等','比较弱','非常弱'], editing: false, reason: `基于你的${age.value || 0}岁人生阅历和${form.occupation || 'Unknown'}职业经历，推测你的心理韧性为中等。` },
+        { id: 'sleep-quality', label: '睡眠质量', value: '一般', confidence: 0.4, checked: true, options: ['非常好','比较好','一般','比较差','非常差'], editing: false, reason: `基于你${age.value || 0}岁的年龄和${form.occupation || 'Unknown'}的工作强度，推测你的睡眠质量一般。` },
+        { id: 'diet-pattern', label: '饮食模式', value: '规律三餐', confidence: 0.4, checked: true, options: ['规律三餐','偶尔不规律','经常不规律','节食','暴饮暴食'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}工作节奏和${age.value || 0}岁的生活方式，推测你的饮食模式为规律三餐。` }
       ]
     },
     {
       id: 'spiritual-world', name: '精神世界', icon: '🌟', expanded: false,
       items: [
-        { id: 'core-values', label: '核心价值观排序', value: '成就>关系>自由', confidence: 0.4, checked: true, options: [], editing: false },
-        { id: 'life-meaning', label: '人生意义感来源', value: '工作', confidence: 0.4, checked: true, options: ['工作','家庭','信仰','创造','服务','体验'], editing: false },
-        { id: 'knowledge-interest', label: '知识兴趣地图', value: '科技', confidence: 0.5, checked: true, options: ['文史','科技','哲学','艺术','体育','其他'], editing: false },
-        { id: 'aesthetic', label: '审美与创造表达', value: '无明显偏好', confidence: 0.3, checked: true, options: ['音乐','绘画','写作','手工','摄影','无明显偏好'], editing: false },
-        { id: 'belief', label: '信念与精神寄托', value: '无宗教信仰', confidence: 0.4, checked: true, options: ['佛教','基督教','伊斯兰教','道教','无宗教信仰','其他'], editing: false },
-        { id: 'reading-pref', label: '阅读偏好', value: '非虚构类', confidence: 0.4, checked: true, options: ['文学小说','非虚构类','科技类','哲学类','不常阅读'], editing: false },
-        { id: 'creative-tendency', label: '创作倾向', value: '偶尔', confidence: 0.3, checked: true, options: ['经常创作','偶尔创作','有想法不实践','无创作欲望'], editing: false },
-        { id: 'spiritual-practice', label: '精神实践', value: '无', confidence: 0.3, checked: true, options: ['冥想','瑜伽','祈祷','阅读','无'], editing: false },
-        { id: 'life-philosophy', label: '人生哲学', value: '务实主义', confidence: 0.3, checked: true, options: [], editing: false },
-        { id: 'death-view', label: '生死观', value: '顺其自然', confidence: 0.3, checked: true, options: [], editing: false }
+        { id: 'core-values', label: '核心价值观排序', value: '成就>关系>自由', confidence: 0.4, checked: true, options: [], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业特征和${form.incomeRange || 'Unknown'}收入水平，推测你的核心价值观排序可能为成就>关系>自由。` },
+        { id: 'life-meaning', label: '人生意义感来源', value: '工作', confidence: 0.4, checked: true, options: ['工作','家庭','信仰','创造','服务','体验'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业和${form.incomeRange || 'Unknown'}收入水平，推测你的人生意义感主要来源于工作。` },
+        { id: 'knowledge-interest', label: '知识兴趣地图', value: '科技', confidence: 0.5, checked: true, options: ['文史','科技','哲学','艺术','体育','其他'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业性质，推测你最感兴趣的知识领域为科技。` },
+        { id: 'aesthetic', label: '审美与创造表达', value: '无明显偏好', confidence: 0.3, checked: true, options: ['音乐','绘画','写作','手工','摄影','无明显偏好'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业特征，推测你没有特别突出的审美或创造表达偏好。` },
+        { id: 'belief', label: '信念与精神寄托', value: '无宗教信仰', confidence: 0.4, checked: true, options: ['佛教','基督教','伊斯兰教','道教','无宗教信仰','其他'], editing: false, reason: `基于你的${form.education || 'Unknown'}学历背景和${form.occupation || 'Unknown'}职业特征，推测你没有特定的宗教信仰。` },
+        { id: 'reading-pref', label: '阅读偏好', value: '非虚构类', confidence: 0.4, checked: true, options: ['文学小说','非虚构类','科技类','哲学类','不常阅读'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业需求和${form.education || 'Unknown'}学历背景，推测你偏好阅读非虚构类作品。` },
+        { id: 'creative-tendency', label: '创作倾向', value: '偶尔', confidence: 0.3, checked: true, options: ['经常创作','偶尔创作','有想法不实践','无创作欲望'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业特征，推测你偶尔有创作冲动。` },
+        { id: 'spiritual-practice', label: '精神实践', value: '无', confidence: 0.3, checked: true, options: ['冥想','瑜伽','祈祷','阅读','无'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业特征和生活方式，推测你没有特定的精神实践。` },
+        { id: 'life-philosophy', label: '人生哲学', value: '务实主义', confidence: 0.3, checked: true, options: [], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业特征和${form.incomeRange || 'Unknown'}收入水平，推测你的人生哲学偏向务实主义。` },
+        { id: 'death-view', label: '生死观', value: '顺其自然', confidence: 0.3, checked: true, options: [], editing: false, reason: `基于你的${form.bloodType || 'Unknown'}血型性格倾向和${derived.value.zodiac || 'Unknown'}星座特质，推测你对生死的态度为顺其自然。` }
       ]
     },
     {
       id: 'behavior-pattern', name: '行为模式', icon: '⚡', expanded: false,
       items: [
-        { id: 'decision-style', label: '决策风格', value: '理性分析型', confidence: 0.55, checked: true, options: DECISION_STYLE_OPTIONS, editing: false },
-        { id: 'interaction-mode', label: '人际互动模式', value: '安全型依恋', confidence: 0.45, checked: true, options: INTERACTION_OPTIONS, editing: false },
-        { id: 'time-management', label: '时间管理特征', value: '有计划', confidence: 0.4, checked: true, options: ['严格计划','有计划','随性','经常拖延'], editing: false },
-        { id: 'stress-response', label: '应对压力策略', value: '积极应对', confidence: 0.4, checked: true, options: ['积极应对','寻求帮助','逃避','情绪化','物质依赖'], editing: false },
-        { id: 'growth-pattern', label: '成长与改变模式', value: '稳步成长', confidence: 0.4, checked: true, options: ['快速成长','稳步成长','停滞','倒退'], editing: false },
-        { id: 'learning-agility', label: '学习敏捷性', value: '中等', confidence: 0.5, checked: true, options: ['非常敏捷','比较敏捷','中等','不太敏捷'], editing: false },
-        { id: 'comfort-zone', label: '舒适区边界', value: '中等', confidence: 0.4, checked: true, options: ['愿意突破','中等','比较保守','非常保守'], editing: false },
-        { id: 'change-willingness', label: '改变意愿', value: '中等', confidence: 0.4, checked: true, options: ['非常愿意','比较愿意','中等','不太愿意','抗拒'], editing: false },
-        { id: 'self-reflection', label: '自我反思习惯', value: '偶尔', confidence: 0.4, checked: true, options: ['经常反思','偶尔反思','很少反思','从不反思'], editing: false },
-        { id: 'habit-formation', label: '习惯养成能力', value: '中等', confidence: 0.4, checked: true, options: ['非常强','比较强','中等','比较弱'], editing: false }
+        { id: 'decision-style', label: '决策风格', value: step2Data.decisionStyle?.value || '理性分析型', confidence: 0.55, checked: true, options: DECISION_STYLE_OPTIONS, editing: false, reason: `基于Step 2 AI推测你的决策风格为${step2Data.decisionStyle?.value || '理性分析型'}，结合你的${form.education || 'Unknown'}学历和${form.occupation || 'Unknown'}职业特征得出。` },
+        { id: 'interaction-mode', label: '人际互动模式', value: step2Data.interactionPattern?.value || '安全型依恋', confidence: 0.45, checked: true, options: INTERACTION_OPTIONS, editing: false, reason: `基于Step 2 AI推测你的人际互动模式为${step2Data.interactionPattern?.value || '安全型依恋'}。` },
+        { id: 'time-management', label: '时间管理特征', value: '有计划', confidence: 0.4, checked: true, options: ['严格计划','有计划','随性','经常拖延'], editing: false, reason: `基于你的${form.occupation || 'Unknown'}职业性质和MBTI类型${step2Data.mbti?.options?.[0]?.type || '未知'}，推测你的时间管理特征为有计划。` },
+        { id: 'stress-response', label: '应对压力策略', value: '积极应对', confidence: 0.4, checked: true, options: ['积极应对','寻求帮助','逃避','情绪化','物质依赖'], editing: false, reason: `基于你的MBTI类型${step2Data.mbti?.options?.[0]?.type || '未知'}和${form.occupation || 'Unknown'}职业特征，推测你面对压力时倾向于积极应对。` },
+        { id: 'growth-pattern', label: '成长与改变模式', value: '稳步成长', confidence: 0.4, checked: true, options: ['快速成长','稳步成长','停滞','倒退'], editing: false, reason: `基于你的${age.value || 0}岁年龄和${form.occupation || 'Unknown'}职业经历，推测你的成长模式为稳步成长。` },
+        { id: 'learning-agility', label: '学习敏捷性', value: '中等', confidence: 0.5, checked: true, options: ['非常敏捷','比较敏捷','中等','不太敏捷'], editing: false, reason: `基于你的${form.education || 'Unknown'}学历和${age.value || 0}岁人生阅历，推测你的学习敏捷性为中等。` },
+        { id: 'comfort-zone', label: '舒适区边界', value: '中等', confidence: 0.4, checked: true, options: ['愿意突破','中等','比较保守','非常保守'], editing: false, reason: `基于你的MBTI类型${step2Data.mbti?.options?.[0]?.type || '未知'}和${form.occupation || 'Unknown'}职业特征，推测你对舒适区的态度为中等。` },
+        { id: 'change-willingness', label: '改变意愿', value: '中等', confidence: 0.4, checked: true, options: ['非常愿意','比较愿意','中等','不太愿意','抗拒'], editing: false, reason: `基于你的${age.value || 0}岁年龄和${form.maritalStatus || 'Unknown'}生活状态，推测你对改变现状的意愿为中等。` },
+        { id: 'self-reflection', label: '自我反思习惯', value: '偶尔', confidence: 0.4, checked: true, options: ['经常反思','偶尔反思','很少反思','从不反思'], editing: false, reason: `基于你的MBTI类型${step2Data.mbti?.options?.[0]?.type || 'Unknown'}，推测你偶尔进行自我反思。` },
+        { id: 'habit-formation', label: '习惯养成能力', value: '中等', confidence: 0.4, checked: true, options: ['非常强','比较强','中等','比较弱'], editing: false, reason: `基于你的MBTI类型${step2Data.mbti?.options?.[0]?.type || 'Unknown'}和${form.occupation || 'Unknown'}职业特征，推测你的习惯养成能力为中等。` }
       ]
     }
   ]
